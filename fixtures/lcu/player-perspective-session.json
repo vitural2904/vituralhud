@@ -1,0 +1,22 @@
+{
+  "id": "player-session",
+  "localPlayerCellId": 0,
+  "myTeam": [
+    { "cellId": 0, "summonerName": "Blue 1", "team": 1 },
+    { "cellId": 1, "summonerName": "Blue 2", "team": 1 },
+    { "cellId": 2, "summonerName": "Blue 3", "team": 1 },
+    { "cellId": 3, "summonerName": "Blue 4", "team": 1 },
+    { "cellId": 4, "summonerName": "Blue 5", "team": 1 }
+  ],
+  "theirTeam": [
+    { "cellId": 5, "summonerName": "Red 1", "team": 2 },
+    { "cellId": 6, "summonerName": "Red 2", "team": 2 },
+    { "cellId": 7, "summonerName": "Red 3", "team": 2 },
+    { "cellId": 8, "summonerName": "Red 4", "team": 2 },
+    { "cellId": 9, "summonerName": "Red 5", "team": 2 }
+  ],
+  "actions": [
+    [{ "id": 1, "actorCellId": 0, "championId": 266, "completed": false, "isInProgress": true, "type": "pick" }]
+  ],
+  "timer": { "phase": "PLANNING", "timeLeftInPhase": 30000 }
+}

@@ -1,0 +1,11 @@
+{
+  "actions": [
+    [
+      { "id": 1, "actorCellId": 0, "championId": 115, "completed": true, "type": "pick" },
+      { "id": 2, "actorCellId": 5, "championId": 134, "completed": true, "type": "pick" }
+    ]
+  ],
+  "blueTeam": [{ "cellId": 0 }],
+  "redTeam": [{ "cellId": 5 }],
+  "timer": { "phase": "PLANNING", "adjustedTimeLeftInPhase": 27000 }
+}
