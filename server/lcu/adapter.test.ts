@@ -30,8 +30,8 @@ describe("LCU polling pipeline", () => {
     expect(state.lcu.feed).toBe("champ-select");
     expect(state.lcu.sessionKind).toBe("spectator");
     expect(state.lcu.gameflowPhase).toBe("ChampSelect");
-    expect(state.teams.blue.picks[0].championId).toBe("Aatrox");
-    expect(state.teams.red.picks[0].championId).toBe("Syndra");
+    expect(state.draft.teams.blue.picks[0].championId).toBe("Aatrox");
+    expect(state.draft.teams.red.picks[0].championId).toBe("Syndra");
   });
 
   it("treats a missing champ-select session as an idle connected client", async () => {

@@ -18,6 +18,7 @@ export default defineConfig({
     allowedHosts: ["terminal.local"],
     proxy: {
       "/api": "http://127.0.0.1:4174",
+      "/team-uploads": "http://127.0.0.1:4174",
       "/ws": {
         target: "ws://127.0.0.1:4174",
         ws: true,

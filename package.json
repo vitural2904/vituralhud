@@ -1,7 +1,7 @@
 {
   "name": "virtualhud-lol",
-  "version": "1.0.0",
-  "description": "Local League of Legends ban/pick overlay for OBS with read-only LCU sync.",
+  "version": "1.1.0",
+  "description": "Local League of Legends ban/pick and post-match overlay for OBS.",
   "private": true,
   "license": "MIT",
   "repository": {
@@ -12,7 +12,7 @@
   "bugs": {
     "url": "https://github.com/vitural2904/virtualhud-lol/issues"
   },
-  "keywords": ["league-of-legends", "obs", "overlay", "champ-select", "lcu"],
+  "keywords": ["league-of-legends", "obs", "overlay", "champ-select", "post-match", "lcu"],
   "type": "module",
   "scripts": {
     "assets:champions": "node scripts/fetch-champion-assets.mjs",

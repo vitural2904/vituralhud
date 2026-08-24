@@ -18,6 +18,9 @@ See `public/fonts/be-vietnam-pro/OFL.txt`.
 
 Champion images and game role icons belong to their respective owners.
 
+Post-match objective icons are Riot Games assets distributed through the
+CommunityDragon mirror. See `public/objectives/README.md`.
+
 They are included for this League of Legends broadcast tool.
 
 VirtualHUD is not endorsed by Riot Games.
@@ -25,4 +28,3 @@ VirtualHUD is not endorsed by Riot Games.
 League of Legends and Riot Games are trademarks of Riot Games, Inc.
 
 Team marks are demo assets only.
-

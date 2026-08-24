@@ -8,4 +8,8 @@ coverage/
 *.part
 .DS_Store
 Thumbs.db
-
+public/qa/
+design/
+.openai/
+UX_AUDIT.md
+design-qa.md
