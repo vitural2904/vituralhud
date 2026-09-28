@@ -1,4 +1,6 @@
 import type { PostMatchData, PostMatchPlayer } from "../../src/domain/types";
+import { champions } from '../../src/domain/catalog';
+import { playerMetrics } from '../../src/domain/validation';
 
 type RiotObjective = { first?: boolean; kills?: number };
 type RiotTeam = {
@@ -16,6 +18,7 @@ type RiotParticipant = {
   totalDamageDealtToChampions?: number;
   damageDealtToObjectives?: number;
   championName?: string;
+  championId?: number;
   riotIdGameName?: string;
   summonerName?: string;
   teamPosition?: string;
@@ -24,22 +27,37 @@ type RiotMatch = {
   metadata?: { matchId?: string };
   info?: {
     gameDuration?: number;
+    gameVersion?: string;
+    gameEndTimestamp?: number;
     participants?: RiotParticipant[];
     teams?: RiotTeam[];
   };
 };
 const roleOrder: Record<string, number> = { TOP: 0, JUNGLE: 1, MIDDLE: 2, BOTTOM: 3, UTILITY: 4 };
-const objectiveKills = (team: RiotTeam | undefined, key: string) => Math.max(0, Math.round(team?.objectives?.[key]?.kills ?? 0));
-const hasNumber = (value: unknown) => Number.isFinite(value);
+const hasNumber = (value: unknown) => Number.isSafeInteger(value) && Number(value) >= 0;
+const numeric = (value: unknown) => hasNumber(value) ? Number(value) : 0;
+const objectiveKills = (team: RiotTeam | undefined, key: string) => numeric(team?.objectives?.[key]?.kills);
+const canonicalChampion = (participant: RiotParticipant) => champions.find(champ => champ.numericId === participant.championId)?.id
+  ?? champions.find(champ => champ.id.toLowerCase() === participant.championName?.toLowerCase())?.id ?? null;
+const ordered = (participants: RiotParticipant[], teamId: number) => participants.filter(p => p.teamId === teamId).sort((a, b) => (roleOrder[a.teamPosition ?? ''] ?? 99) - (roleOrder[b.teamPosition ?? ''] ?? 99) || (a.participantId ?? 99) - (b.participantId ?? 99)).slice(0, 5);
+function durationOf(match: RiotMatch): number {
+  const info = match.info;
+  if (!hasNumber(info?.gameDuration)) return 0;
+  if (hasNumber(info?.gameEndTimestamp)) return Number(info?.gameDuration);
+  const version = info?.gameVersion?.match(/^(\d+)\.(\d+)/);
+  if (!version) return 0;
+  const legacy = Number(version[1]) < 11 || (Number(version[1]) === 11 && Number(version[2]) < 20);
+  return Math.round(Number(info?.gameDuration) / (legacy ? 1000 : 1));
+}
 
 export function collectMatchV5Warnings(match: RiotMatch) {
   const participants = match.info?.participants ?? [];
   const teams = match.info?.teams ?? [];
   const warnings: string[] = [];
 
-  if (!hasNumber(match.info?.gameDuration)) warnings.push("Thiếu thời lượng trận. Đã đặt 00:00. Kiểm tra và nhập tay nếu cần.");
+  if (!durationOf(match)) warnings.push("Thiếu thời lượng hoặc đơn vị thời lượng chưa rõ. Cần nhập thời lượng trước khi duyệt.");
   if ([100, 200].some((teamId) => participants.filter((participant) => participant.teamId === teamId).length < 5)) {
-    warnings.push("Thiếu người chơi của một hoặc cả hai đội. Slot thiếu đã được đặt về 0.");
+    warnings.push("Thiếu người chơi của một hoặc cả hai đội. Slot thiếu cần điền trước khi duyệt.");
   }
 
   const objectiveLabels: Array<[string, string]> = [
@@ -51,11 +69,11 @@ export function collectMatchV5Warnings(match: RiotMatch) {
   const missingObjectives = objectiveLabels
     .filter(([key]) => teams.some((team) => !hasNumber(team.objectives?.[key]?.kills)))
     .map(([, label]) => label);
-  if (missingObjectives.length) warnings.push(`Thiếu dữ liệu mục tiêu: ${missingObjectives.join(", ")}. Đã đặt 0–0. Kiểm tra và nhập tay nếu cần.`);
+  if (missingObjectives.length) warnings.push(`Thiếu dữ liệu mục tiêu: ${missingObjectives.join(", ")}. Cần điền hoặc xác nhận số 0 trước khi duyệt.`);
 
   const hasCompleteEarlyObjective = ["horde", "riftHerald"]
     .some((key) => teams.length >= 2 && teams.every((team) => hasNumber(team.objectives?.[key]?.kills)));
-  if (!hasCompleteEarlyObjective) warnings.push("Thiếu dữ liệu Sâu hư không/Sứ giả. Đã đặt 0–0. Kiểm tra và nhập tay nếu cần.");
+  if (!hasCompleteEarlyObjective) warnings.push("Thiếu dữ liệu Sâu hư không/Sứ giả. Cần điền hoặc xác nhận số 0 trước khi duyệt.");
 
   const playerFields: Array<[keyof RiotParticipant, string]> = [
     ["kills", "kill"],
@@ -68,27 +86,22 @@ export function collectMatchV5Warnings(match: RiotMatch) {
   const missingPlayerFields = playerFields
     .filter(([key]) => participants.some((participant) => !hasNumber(participant[key])))
     .map(([, label]) => label);
-  if (missingPlayerFields.length) warnings.push(`Thiếu chỉ số người chơi: ${missingPlayerFields.join(", ")}. Giá trị thiếu đã được đặt 0.`);
+  if (missingPlayerFields.length) warnings.push(`Thiếu chỉ số người chơi: ${missingPlayerFields.join(", ")}. Cần điền hoặc xác nhận số 0 trước khi duyệt.`);
 
   return warnings;
 }
 
 function normalizePlayers(participants: RiotParticipant[], teamId: number): PostMatchPlayer[] {
-  const players = participants
-    .filter((participant) => participant.teamId === teamId)
-    .sort((a, b) => (roleOrder[a.teamPosition ?? ""] ?? 99) - (roleOrder[b.teamPosition ?? ""] ?? 99) || (a.participantId ?? 99) - (b.participantId ?? 99))
-    .slice(0, 5)
+  const players = ordered(participants, teamId)
     .map((participant) => ({
-      player: participant.riotIdGameName || participant.summonerName || `Player ${participant.participantId ?? ""}`.trim(),
-      championId: participant.championName || null,
-      damageToChampions: Math.max(0, Math.round(participant.totalDamageDealtToChampions ?? 0)),
-      kills: Math.max(0, Math.round(participant.kills ?? 0)),
-      assists: Math.max(0, Math.round(participant.assists ?? 0)),
-      largestKillingSpree: Math.max(0, Math.round(participant.largestKillingSpree ?? 0)),
-      damageToObjectives: Math.max(0, Math.round(participant.damageDealtToObjectives ?? 0)),
+      player: (participant.riotIdGameName || participant.summonerName || '').slice(0, 24),
+      championId: canonicalChampion(participant),
+      damageToChampions: numeric(participant.totalDamageDealtToChampions),
+      kills: numeric(participant.kills), assists: numeric(participant.assists),
+      largestKillingSpree: numeric(participant.largestKillingSpree), damageToObjectives: numeric(participant.damageDealtToObjectives),
     }));
   while (players.length < 5) players.push({
-    player: `Player ${players.length + 1}`,
+    player: '',
     championId: null,
     damageToChampions: 0,
     kills: 0,
@@ -100,25 +113,25 @@ function normalizePlayers(participants: RiotParticipant[], teamId: number): Post
 }
 
 export function normalizeMatchV5(match: RiotMatch): PostMatchData {
+  if (!match || !Array.isArray(match.info?.participants) || !Array.isArray(match.info?.teams)) throw new Error('Match-V5 có cấu trúc không hợp lệ.');
   const participants = match.info?.participants ?? [];
   const riotTeams = match.info?.teams ?? [];
   const blueTeam = riotTeams.find((team) => team.teamId === 100);
   const redTeam = riotTeams.find((team) => team.teamId === 200);
   if (!blueTeam || !redTeam || participants.length < 2) throw new Error("Match-V5 không có đủ dữ liệu hai đội");
-  if (Boolean(blueTeam.win) === Boolean(redTeam.win)) throw new Error("Match-V5 không xác định được đội thắng");
+  if (typeof blueTeam.win !== 'boolean' || typeof redTeam.win !== 'boolean' || blueTeam.win === redTeam.win) throw new Error("Match-V5 không xác định được đội thắng");
 
   const supportsVoidGrubs = Object.prototype.hasOwnProperty.call(blueTeam.objectives ?? {}, "horde")
     || Object.prototype.hasOwnProperty.call(redTeam.objectives ?? {}, "horde");
   const voidGrubKills = objectiveKills(blueTeam, "horde") + objectiveKills(redTeam, "horde");
   const riftHeraldKills = objectiveKills(blueTeam, "riftHerald") + objectiveKills(redTeam, "riftHerald");
-  const durationRaw = Math.max(0, match.info?.gameDuration ?? 0);
-  const durationSeconds = Math.round(durationRaw > 86_400 ? durationRaw / 1_000 : durationRaw);
+  const durationSeconds = durationOf(match);
 
   const makeTeam = (team: RiotTeam, teamId: number) => {
     const members = participants.filter((participant) => participant.teamId === teamId);
     return {
-      kills: members.reduce((sum, participant) => sum + (participant.kills ?? 0), 0),
-      gold: members.reduce((sum, participant) => sum + (participant.goldEarned ?? 0), 0),
+      kills: members.reduce((sum, participant) => sum + numeric(participant.kills), 0),
+      gold: members.reduce((sum, participant) => sum + numeric(participant.goldEarned), 0),
       towers: objectiveKills(team, "tower"),
       dragons: objectiveKills(team, "dragon"),
       barons: objectiveKills(team, "baron"),
@@ -138,6 +151,30 @@ export function normalizeMatchV5(match: RiotMatch): PostMatchData {
       red: makeTeam(redTeam, 200),
     },
   };
+}
+
+export function collectMatchV5MissingFields(match: RiotMatch, data = normalizeMatchV5(match)) {
+  const missing: string[] = [];
+  if (!durationOf(match)) missing.push('durationSeconds');
+  const playerKeys = { damageToChampions: 'totalDamageDealtToChampions', kills: 'kills', assists: 'assists', largestKillingSpree: 'largestKillingSpree', damageToObjectives: 'damageDealtToObjectives' } as const;
+  const objectiveKeys = { towers: 'tower', dragons: 'dragon', barons: 'baron', inhibitors: 'inhibitor', voidGrubs: 'horde', riftHeralds: 'riftHerald' } as const;
+  for (const [side, teamId] of [['blue', 100], ['red', 200]] as const) {
+    const players = ordered(match.info?.participants ?? [], teamId);
+    const team = match.info?.teams?.find(item => item.teamId === teamId);
+    if (players.length !== 5 || players.some(p => !hasNumber(p.kills))) missing.push(`teams.${side}.kills`);
+    if (players.length !== 5 || players.some(p => !hasNumber(p.goldEarned))) missing.push(`teams.${side}.gold`);
+    for (const [field, key] of Object.entries(objectiveKeys)) {
+      if (['voidGrubs', 'riftHeralds'].includes(field) && field !== data.earlyObjective) continue;
+      if (!hasNumber(team?.objectives?.[key]?.kills)) missing.push(`teams.${side}.${field}`);
+    }
+    for (let index = 0; index < 5; index++) {
+      const p = players[index]; const base = `teams.${side}.players.${index}`;
+      if (!p || !(p.riotIdGameName || p.summonerName)) missing.push(`${base}.player`);
+      if (!p || !canonicalChampion(p)) missing.push(`${base}.championId`);
+      for (const metric of playerMetrics) if (!p || !hasNumber(p[playerKeys[metric]])) missing.push(`${base}.${metric}`);
+    }
+  }
+  return missing;
 }
 
 export function regionalRouteForMatch(matchId: string) {
@@ -160,18 +197,25 @@ export async function fetchMatchV5(matchId: string, options: {
   apiKey: string;
   regionalRoute?: string;
   fetchImpl?: typeof fetch;
+  signal?: AbortSignal;
+  timeoutMs?: number;
 }) {
   const cleanMatchId = matchId.trim().toUpperCase();
   if (!/^[A-Z0-9]+_\d+$/.test(cleanMatchId)) throw new Error("Match ID không đúng dạng. Ví dụ: VN2_123456789");
   if (!options.apiKey) throw new Error("Thiếu RIOT_API_KEY trên server");
   const route = options.regionalRoute || regionalRouteForMatch(cleanMatchId);
+  if (!['sea', 'asia', 'europe', 'americas'].includes(route)) throw new Error('Riot regional route không hợp lệ.');
   const request = options.fetchImpl ?? fetch;
   const base = `https://${route}.api.riotgames.com/lol/match/v5/matches/${encodeURIComponent(cleanMatchId)}`;
   const headers = { "X-Riot-Token": options.apiKey };
-  const match = await readRiotJson<RiotMatch>(await request(base, { headers }), "kết quả trận");
+  const deadline = AbortSignal.timeout(options.timeoutMs ?? 10000);
+  const signal = options.signal ? AbortSignal.any([options.signal, deadline]) : deadline;
+  const match = await readRiotJson<RiotMatch>(await request(base, { headers, signal }), "kết quả trận");
+  const data = normalizeMatchV5(match);
   return {
     matchId: match.metadata?.matchId || cleanMatchId,
-    data: normalizeMatchV5(match),
+    data,
+    missingFields: collectMatchV5MissingFields(match, data),
     warnings: collectMatchV5Warnings(match),
   };
 }

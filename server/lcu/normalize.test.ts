@@ -8,6 +8,10 @@ async function fixture(name: string) {
 }
 
 describe("LCU champ-select normalization", () => {
+  it('F16 preserves a skipped ban slot before the next champion', () => {
+    const result = normalizeChampSelectSession({ blueTeam: [{ cellId: 0 }], redTeam: [{ cellId: 5 }], actions: [[{ type: 'ban', actorCellId: 0, championId: 0, completed: true }], [{ type: 'ban', actorCellId: 0, championId: 266, completed: true }]] });
+    expect(result.snapshot?.teams.blue.bans.slice(0, 2)).toEqual([null, 'Aatrox']);
+  });
   it("maps a spectator feed by explicit Blue and Red teams", async () => {
     const result = normalizeChampSelectSession(
       await fixture("spectator-champ-select-session.json"),

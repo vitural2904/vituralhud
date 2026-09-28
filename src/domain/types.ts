@@ -101,7 +101,7 @@ export type PostMatchState = {
   status: PostMatchStatus;
   matchId: string;
   source: PostMatchDataSource;
-  baselineSource: Exclude<PostMatchDataSource, "manual">;
+  baselineSource: PostMatchDataSource;
   lastSyncedAt: string | null;
   confidence: ValidationConfidence;
   baselineConfidence: ValidationConfidence;
@@ -109,6 +109,8 @@ export type PostMatchState = {
   data: PostMatchData;
   overrideFields: string[];
   warnings: string[];
+  missingFields: string[];
+  baselineMissingFields: string[];
 };
 
 export type EventEntry = {
@@ -156,6 +158,10 @@ export type LcuStatus = {
 };
 
 export type BroadcastState = {
+  schemaVersion: 2;
+  serverInstanceId: string;
+  outputOwner: "operator" | "lcu";
+  storageWarning: string | null;
   revision: number;
   source: SourceMode;
   lifecycle: Lifecycle;
@@ -185,6 +191,10 @@ export type BroadcastCommand =
   | { type: "SET_OVERRIDE"; value: boolean }
   | { type: "SET_OVERLAY_VISIBLE"; value: boolean }
   | { type: "SET_OUTPUT"; output: OutputScreen }
+  | { type: "RESUME_AUTO_OUTPUT" }
+  | { type: "POST_MATCH_CREATE_MANUAL" }
+  | { type: "POST_MATCH_SET_PLAYER_IDENTITY"; side: Side; index: number; field: "player" | "championId"; value: string | null }
+  | { type: "POST_MATCH_CONFIRM_ZERO"; fields: string[] }
   | { type: "POST_MATCH_BEGIN_FETCH" }
   | { type: "POST_MATCH_LOAD_FIXTURE" }
   | { type: "POST_MATCH_SET_WINNER"; side: Side }

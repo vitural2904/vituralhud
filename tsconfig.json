@@ -17,5 +17,5 @@
     "jsx": "react-jsx",
     "types": ["vite/client", "node"]
   },
-  "include": ["src", "server", "vite.config.mjs"]
+  "include": ["src", "server", "scripts/**/*.ts", "tests/**/*.ts", "playwright.config.ts", "vite.config.mjs"]
 }

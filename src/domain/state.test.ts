@@ -14,22 +14,22 @@ describe("broadcast reducer", () => {
     const state = createInitialState();
     const next = reduceDraft(state, { type: "SET_PICK", side: "blue", index: 0, championId: "Ashe" });
     expect(next.draft.teams.blue.picks[0].championId).toBe("Ashe");
-    expect(state.draft.teams.blue.picks[0].championId).toBe("Ziggs");
+    expect(state.draft.teams.blue.picks[0].championId).toBeNull();
   });
 
-  it("clamps unsafe timer and score values", () => {
+  it("rejects unsafe timer and score values without mutation", () => {
     const state = createInitialState();
-    const timed = reduceDraft(state, { type: "SET_TIMER", timerMs: -100 });
-    const scored = reduceDraft(timed, { type: "SET_SCORE", side: "red", value: 99 });
-    expect(scored.draft.timerMs).toBe(0);
-    expect(scored.match.teams.red.score).toBe(2);
+    expect(() => reduceDraft(state, { type: "SET_TIMER", timerMs: -100 })).toThrow();
+    expect(() => reduceDraft(state, { type: "SET_SCORE", side: "red", value: 99 })).toThrow();
+    expect(state.draft.timerMs).toBe(27000);
+    expect(state.match.teams.red.score).toBe(0);
   });
 
   it("preserves Vietnamese player names", () => {
     const state = createInitialState();
     const next = reduceDraft(state, { type: "SET_PLAYER", side: "blue", index: 0, value: "Đặng Văn Lâm" });
     expect(next.match.teams.blue.players[0]).toBe("Đặng Văn Lâm");
-    expect(state.match.teams.blue.players[0]).toBe("Kiên");
+    expect(state.match.teams.blue.players[0]).toBe("");
   });
 
   it("keeps draft output under manual director control", () => {
@@ -40,18 +40,16 @@ describe("broadcast reducer", () => {
     const automatic = reduceDraft(visible, { type: "SET_OVERRIDE", value: false });
     expect(blocked.activeOutput).toBe("none");
     expect(visible.activeOutput).toBe("draft");
-    expect(automatic.activeOutput).toBe("none");
+    expect(automatic.activeOutput).toBe("draft");
   });
 
   it("requires review and approval before post-match can go live", () => {
     const waiting = createInitialState();
-    const rejected = reduceDraft(waiting, { type: "SET_OUTPUT", output: "post-match" });
+    expect(() => reduceDraft(waiting, { type: "SET_OUTPUT", output: "post-match" })).toThrow();
     const review = reduceDraft(waiting, { type: "POST_MATCH_LOAD_FIXTURE" });
-    const stillRejected = reduceDraft(review, { type: "SET_OUTPUT", output: "post-match" });
+    expect(() => reduceDraft(review, { type: "SET_OUTPUT", output: "post-match" })).toThrow();
     const ready = reduceDraft(review, { type: "POST_MATCH_SET_READY", value: true });
     const live = reduceDraft(ready, { type: "SET_OUTPUT", output: "post-match" });
-    expect(rejected.activeOutput).toBe("none");
-    expect(stillRejected.activeOutput).toBe("none");
     expect(ready.postMatch.status).toBe("ready");
     expect(live.postMatch.status).toBe("live");
     expect(live.activeOutput).toBe("post-match");

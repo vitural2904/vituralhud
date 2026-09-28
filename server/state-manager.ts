@@ -1,16 +1,24 @@
-import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises";
+import { appendFile, mkdir, readFile, copyFile, readdir, rename, unlink, open, stat } from "node:fs/promises";
 import path from "node:path";
 import type { BroadcastCommand, BroadcastState, DraftFeedSnapshot, DraftPhase, EventEntry, PostMatchData, PostMatchDataSource, Side, SourceMode, ValidationConfidence } from "../src/domain/types";
-import { commandLabel, createInitialState, reduceDraft } from "../src/domain/state";
+import { commandLabel, createInitialState, reduceDraft, reconcileOutput } from "../src/domain/state";
+import { DomainError, validateCommand, validateState, postFields } from '../src/domain/validation';
+import { numericPostFields } from '../src/domain/fields';
 
 type Listener = (state: BroadcastState) => void;
 type LooseRecord = Record<string, any>;
-const isRecord = (value: unknown): value is LooseRecord => Boolean(value) && typeof value === "object";
+const isRecord = (value: unknown): value is LooseRecord => Boolean(value) && typeof value === "object" && !Array.isArray(value);
 const numberOr = (value: unknown, fallback: number) => Number.isFinite(value) ? Number(value) : fallback;
-const isConfidence = (value: unknown): value is ValidationConfidence => ["unverified", "low", "medium", "high"].includes(String(value));
+const isConfidence = (value: unknown): value is ValidationConfidence => typeof value === 'string' && ["unverified", "low", "medium", "high"].includes(value);
 
 function migratePostMatchData(value: unknown, defaults: PostMatchData): PostMatchData {
+  if (value !== undefined && !isRecord(value)) throw new DomainError('INVALID_SNAPSHOT', 'Post-match không phải object.');
   const raw = isRecord(value) ? value : {};
+  if (raw.winner !== undefined && !['blue', 'red'].includes(raw.winner) || raw.earlyObjective !== undefined && !['voidGrubs', 'riftHeralds'].includes(raw.earlyObjective)) throw new DomainError('INVALID_SNAPSHOT', 'Kết quả lưu không hợp lệ.');
+  for (const field of numericPostFields) {
+    const supplied = field.split('.').reduce<any>((parent, key) => parent?.[key], raw);
+    if (supplied !== undefined && (!Number.isSafeInteger(supplied) || supplied < 0)) throw new DomainError('INVALID_SNAPSHOT', 'Chỉ số lưu không hợp lệ.', [field]);
+  }
   const teams = {} as PostMatchData["teams"];
   for (const side of ["blue", "red"] as Side[]) {
     const team = isRecord(raw.teams?.[side]) ? raw.teams[side] : {};
@@ -47,14 +55,32 @@ function migratePostMatchData(value: unknown, defaults: PostMatchData): PostMatc
 }
 
 export function migrateSavedState(saved: unknown): BroadcastState {
+  if (isRecord(saved) && saved.schemaVersion !== undefined && saved.schemaVersion !== 2) throw new DomainError('SNAPSHOT_VERSION', 'Phiên bản snapshot chưa được hỗ trợ.');
+  if (isRecord(saved) && saved.schemaVersion === 2) {
+    validateState(saved);
+    const migrated = structuredClone(saved);
+    migrated.serverInstanceId = ''; migrated.storageWarning = null;
+    migrated.outputOwner = 'operator'; migrated.activeOutput = 'none';
+    if (['live', 'ready', 'fetching'].includes(migrated.postMatch.status)) migrated.postMatch.status = 'review';
+    return migrated;
+  }
   const defaults = createInitialState();
-  if (!isRecord(saved)) return defaults;
+  if (!isRecord(saved)) throw new DomainError('INVALID_SNAPSHOT', 'Snapshot không phải object.');
+  const series = isRecord(saved.match) ? saved.match.bestOf : saved.bestOf;
+  if (series !== undefined && ![1, 3, 5].includes(series)) throw new DomainError('INVALID_SNAPSHOT', 'Best-of lưu không hợp lệ.');
   if (isRecord(saved.match) && isRecord(saved.draft)) {
+    const absentFields = (data: unknown) => postFields.filter(field => field.split('.').reduce<any>((parent, key) => parent?.[key], data) === undefined);
+    // Reject invalid supplied numbers instead of silently replacing them with zero.
+    const inspect = (value: unknown, key = '') => {
+      if (typeof value === 'number' && (!Number.isSafeInteger(value) || value < 0)) throw new DomainError('INVALID_SNAPSHOT', 'Số không hợp lệ.', [key]);
+      if (isRecord(value)) for (const [field, child] of Object.entries(value)) inspect(child, `${key}.${field}`);
+    };
+    inspect(saved);
     const baseline = migratePostMatchData(saved.postMatch?.baseline, defaults.postMatch.baseline);
     const data = migratePostMatchData(saved.postMatch?.data, baseline);
-    const baselineSource = ["fixture", "match-v5", "tournament", "lcu-provisional"].includes(saved.postMatch?.baselineSource)
+    const baselineSource = ["fixture", "match-v5", "tournament", "lcu-provisional", "manual"].includes(saved.postMatch?.baselineSource)
       ? saved.postMatch.baselineSource
-      : ["fixture", "match-v5", "tournament", "lcu-provisional"].includes(saved.postMatch?.source)
+      : ["fixture", "match-v5", "tournament", "lcu-provisional", "manual"].includes(saved.postMatch?.source)
         ? saved.postMatch.source
         : "fixture";
     const confidence = isConfidence(saved.postMatch?.confidence) ? saved.postMatch.confidence : defaults.postMatch.confidence;
@@ -62,6 +88,11 @@ export function migrateSavedState(saved: unknown): BroadcastState {
     const migrated = {
       ...defaults,
       ...saved,
+      schemaVersion: 2,
+      serverInstanceId: '',
+      outputOwner: 'operator',
+      activeOutput: 'none',
+      storageWarning: null,
       match: {
         ...defaults.match,
         ...saved.match,
@@ -89,6 +120,8 @@ export function migrateSavedState(saved: unknown): BroadcastState {
         data,
         overrideFields: Array.isArray(saved.postMatch?.overrideFields) ? saved.postMatch.overrideFields : [],
         warnings: Array.isArray(saved.postMatch?.warnings) ? saved.postMatch.warnings : [],
+        missingFields: saved.postMatch?.missingFields ?? absentFields(saved.postMatch?.data),
+        baselineMissingFields: saved.postMatch?.baselineMissingFields ?? absentFields(saved.postMatch?.baseline),
       },
       lcu: { ...defaults.lcu, ...saved.lcu },
       events: Array.isArray(saved.events) ? saved.events : [],
@@ -97,14 +130,18 @@ export function migrateSavedState(saved: unknown): BroadcastState {
       migrated.postMatch.source = "manual";
       migrated.postMatch.confidence = "unverified";
     }
-    if (migrated.postMatch.status === "live") migrated.activeOutput = "post-match";
+    if (['live', 'ready', 'fetching'].includes(migrated.postMatch.status)) migrated.postMatch.status = 'review';
+    validateState(migrated);
     return migrated;
   }
 
   // v1 used one flat draft object. Preserve operator data during upgrade.
+  if (!isRecord(saved.teams) || !isRecord(saved.teams.blue) || !isRecord(saved.teams.red)) throw new DomainError('INVALID_SNAPSHOT', 'Snapshot không có dữ liệu đội.');
+  for (const field of ['revision', 'timerMs'] as const) if (saved[field] !== undefined && (!Number.isSafeInteger(saved[field]) || saved[field] < 0)) throw new DomainError('INVALID_SNAPSHOT', 'Số lưu không hợp lệ.', [field]);
   const legacyTeam = (side: Side) => isRecord(saved.teams?.[side]) ? saved.teams[side] : {};
   for (const side of ["blue", "red"] as Side[]) {
     const team = legacyTeam(side);
+    if (team.score !== undefined && (!Number.isSafeInteger(team.score) || team.score < 0)) throw new DomainError('INVALID_SNAPSHOT', 'Tỉ số lưu không hợp lệ.');
     defaults.match.teams[side] = {
       ...defaults.match.teams[side],
       code: typeof team.code === "string" ? team.code : defaults.match.teams[side].code,
@@ -134,180 +171,206 @@ export function migrateSavedState(saved: unknown): BroadcastState {
   defaults.draft.activeSide = saved.activeSide === "red" ? "red" : "blue";
   defaults.draft.autoSync = saved.autoSync !== false;
   defaults.draft.manualOverride = Boolean(saved.manualOverride);
-  defaults.activeOutput = saved.overlayVisible ? "draft" : "none";
-  defaults.lifecycle = defaults.draft.phase === "complete" ? "in-game" : defaults.activeOutput === "draft" ? "draft" : "idle";
+  defaults.activeOutput = 'none';
+  defaults.lifecycle = defaults.draft.phase === "complete" ? "in-game" : "idle";
   defaults.lcu = { ...defaults.lcu, ...(isRecord(saved.lcu) ? saved.lcu : {}) };
   defaults.events = Array.isArray(saved.events) ? saved.events : [];
+  validateState(defaults);
   return defaults;
 }
 
+export type StorageStage = 'write' | 'flush' | 'rename' | 'log';
 export class StateManager {
-  private state: BroadcastState = createInitialState();
+  private state = createInitialState();
   private undoStack: BroadcastState[] = [];
   private redoStack: BroadcastState[] = [];
   private listeners = new Set<Listener>();
-  private readonly dataDir: string;
-  private revisionCounter = 1;
-
-  constructor(dataDir = path.resolve("data")) { this.dataDir = dataDir; }
+  private queue: Promise<unknown> = Promise.resolve();
+  private generation = 0;
+  private warning: string | null = null;
+  readonly instanceId = crypto.randomUUID();
+  constructor(private readonly dataDir = path.resolve('data'), private readonly fault?: (stage: StorageStage) => void | Promise<void>) {}
+  private serial<T>(task: () => Promise<T>): Promise<T> {
+    const operation = this.queue.then(task);
+    this.queue = operation.catch(() => undefined);
+    return operation;
+  }
   async init() {
     await mkdir(this.dataDir, { recursive: true });
-    try {
-      const raw = await readFile(path.join(this.dataDir, "snapshot.json"), "utf8");
-      this.state = migrateSavedState(JSON.parse(raw));
-      this.revisionCounter = this.state.revision;
-      await this.persist();
-    } catch { await this.persist(); }
-  }
-  getState() { return structuredClone(this.state); }
-  subscribe(listener: Listener) { this.listeners.add(listener); return () => this.listeners.delete(listener); }
-
-  async dispatch(command: BroadcastCommand, source: SourceMode = "manual") {
-    if (command.type === "UNDO") return this.undo(source);
-    if (command.type === "REDO") return this.redo(source);
-    if (command.type === "SET_OVERLAY_VISIBLE" && !this.state.draft.manualOverride) return this.getState();
-    if (command.type === "RESET") {
-      this.undoStack.push(this.getState());
-      this.redoStack = [];
-      this.state = createInitialState();
-      return this.commit(commandLabel(command), source);
-    }
-    this.undoStack.push(this.getState());
-    if (this.undoStack.length > 50) this.undoStack.shift();
-    this.redoStack = [];
-    this.state = reduceDraft(this.state, command);
-    return this.commit(commandLabel(command), source);
-  }
-
-  async tick(deltaMs: number) {
-    if (!this.state.draft.timerRunning) return;
-    this.state.draft.timerMs = Math.max(0, this.state.draft.timerMs - deltaMs);
-    if (this.state.draft.timerMs === 0) this.state.draft.timerRunning = false;
-    this.revisionCounter += 1;
-    this.state.revision = this.revisionCounter;
-    await this.persist();
-    this.emit();
-  }
-
-  async ingestDraftFeed(snapshot: DraftFeedSnapshot) {
-    if (!this.state.draft.autoSync || this.state.draft.manualOverride) return this.getState();
-    const next = this.getState();
-    next.draft.phase = snapshot.phase;
-    next.lifecycle = snapshot.phase === "complete" ? "in-game" : "draft";
-    next.activeOutput = snapshot.phase === "complete" ? "none" : "draft";
-    const timerMs = Math.max(0, Math.min(300_000, snapshot.timerMs));
-    if (snapshot.phase !== this.state.draft.phase || Math.abs(this.state.draft.timerMs - timerMs) >= 750) next.draft.timerMs = timerMs;
-    next.draft.timerRunning = snapshot.timerRunning && next.draft.timerMs > 0;
-    if (snapshot.activeSide) next.draft.activeSide = snapshot.activeSide;
-    for (const side of ["blue", "red"] as Side[]) {
-      for (let index = 0; index < 5; index += 1) {
-        const pick = snapshot.teams[side].picks[index];
-        next.draft.teams[side].picks[index].championId = pick?.championId ?? null;
-        next.draft.teams[side].picks[index].locked = pick?.locked ?? false;
-        if (pick?.player !== undefined) next.match.teams[side].players[index] = pick.player.slice(0, 24);
-        next.draft.teams[side].bans[index] = snapshot.teams[side].bans[index] ?? null;
+    await mkdir(path.join(this.dataDir, 'backups'), { recursive: true });
+    let raw: string | undefined;
+    try { raw = await readFile(path.join(this.dataDir, 'snapshot.json'), 'utf8'); }
+    catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
+    if (raw !== undefined) {
+      try { this.state = migrateSavedState(JSON.parse(raw)); }
+      catch (error) {
+        if (!(error instanceof SyntaxError || error instanceof DomainError)) throw error;
+        await copyFile(path.join(this.dataDir, 'snapshot.json'), path.join(this.dataDir, `corrupt-${Date.now()}-${crypto.randomUUID()}.json`));
+        this.warning = 'Snapshot lỗi đã được giữ riêng. Đang dùng dữ liệu phục hồi. Sóng đang tắt.';
+        const backups = (await readdir(path.join(this.dataDir, 'backups'))).filter(name => /^snapshot-\d+-[\w-]+\.json$/.test(name)).sort().reverse();
+        for (const name of backups) {
+          try { this.state = migrateSavedState(JSON.parse(await readFile(path.join(this.dataDir, 'backups', name), 'utf8'))); break; }
+          catch (backupError) { if (!(backupError instanceof SyntaxError || backupError instanceof DomainError)) throw backupError; }
+        }
       }
     }
-    const before = JSON.stringify({ draft: this.state.draft, players: this.state.match.teams });
-    const after = JSON.stringify({ draft: next.draft, players: next.match.teams });
-    if (before === after) return this.getState();
-    next.lcu.feed = "champ-select";
-    next.lcu.sessionId = snapshot.feedId;
-    next.lcu.lastPayloadAt = snapshot.observedAt;
+    this.state.activeOutput = 'none'; this.state.outputOwner = 'operator';
+    this.state.draft.timerRunning = false;
+    this.state.lcu = { ...createInitialState().lcu };
+    reconcileOutput(this.state);
+    validateState(this.state);
+    await this.persist(this.state);
+  }
+  getState(): BroadcastState { return { ...structuredClone(this.state), serverInstanceId: this.instanceId, storageWarning: this.warning }; }
+  subscribe(listener: Listener) { this.listeners.add(listener); return () => this.listeners.delete(listener); }
+  async dispatch(command: BroadcastCommand, source: SourceMode = 'manual') {
+    validateCommand(command);
+    return this.serial(async () => {
+      if (command.type === 'UNDO' || command.type === 'REDO') {
+        const from = command.type === 'UNDO' ? this.undoStack : this.redoStack;
+        const to = command.type === 'UNDO' ? this.redoStack : this.undoStack;
+        const previous = from.at(-1);
+        if (!previous) return this.getState();
+        const next = structuredClone(previous);
+        next.lcu = structuredClone(this.state.lcu);
+        next.activeOutput = 'none'; next.outputOwner = 'operator';
+        if (['live', 'ready', 'fetching'].includes(next.postMatch.status)) next.postMatch.status = 'review';
+        reconcileOutput(next);
+        const before = structuredClone(this.state);
+        const result = await this.commit(next, commandLabel(command), source);
+        from.pop(); to.push(before); if (to.length > 50) to.shift();
+        this.generation++;
+        return result;
+      }
+      const next = command.type === 'RESET' ? createInitialState() : reduceDraft(this.state, command);
+      if (JSON.stringify(next) === JSON.stringify(this.state)) return this.getState();
+      const before = structuredClone(this.state);
+      const result = await this.commit(next, commandLabel(command), source);
+      this.undoStack.push(before); if (this.undoStack.length > 50) this.undoStack.shift(); this.redoStack = [];
+      if (['RESET', 'POST_MATCH_RESET', 'POST_MATCH_CREATE_MANUAL', 'POST_MATCH_LOAD_FIXTURE', 'POST_MATCH_BEGIN_FETCH'].includes(command.type)) this.generation++;
+      return result;
+    });
+  }
+  async beginPostMatchFetch() {
+    return this.serial(async () => {
+      const next = reduceDraft(this.state, { type: 'POST_MATCH_BEGIN_FETCH' });
+      await this.commit(next, 'Post-match fetch started', 'manual');
+      return ++this.generation;
+    });
+  }
+  async cancelPostMatchFetch() {
+    return this.serial(async () => {
+      const next = structuredClone(this.state);
+      if (next.postMatch.status === 'fetching') next.postMatch.status = next.postMatch.lastSyncedAt ? 'review' : 'waiting';
+      next.activeOutput = 'none'; next.outputOwner = 'operator';
+      const result = await this.commit(next, 'Post-match fetch cancelled', 'manual');
+      this.generation++;
+      return result;
+    });
+  }
+  isCurrentFetch(generation: number) { return generation === this.generation && this.state.postMatch.status === 'fetching'; }
+  async tick(deltaMs: number) {
+    return this.serial(async () => {
+      if (!this.state.draft.timerRunning) return this.getState();
+      const next = structuredClone(this.state);
+      next.draft.timerMs = Math.max(0, next.draft.timerMs - Math.max(0, Math.round(deltaMs)));
+      if (!next.draft.timerMs) next.draft.timerRunning = false;
+      return this.commit(next, 'Timer tick', next.source, false);
+    });
+  }
+  async ingestLcuFrame(update: Parameters<StateManager['setLcuStatus']>[0], snapshot?: DraftFeedSnapshot) {
+    return this.serial(async () => {
+      const next = structuredClone(this.state);
+      next.lcu = { ...next.lcu, ...update };
+      if (!update.connected) next.lcu = { ...createInitialState().lcu, message: update.message };
+      else next.lcu.lastSeenAt = new Date().toISOString();
+      if (snapshot && next.draft.autoSync && !next.draft.manualOverride) {
+        if (next.draft.phase !== snapshot.phase || Math.abs(next.draft.timerMs - snapshot.timerMs) >= 750) next.draft.timerMs = Math.max(0, Math.min(300000, Math.round(snapshot.timerMs)));
+        next.draft.phase = snapshot.phase;
+        next.draft.timerRunning = snapshot.timerRunning && next.draft.timerMs > 0;
+        if (snapshot.activeSide) next.draft.activeSide = snapshot.activeSide;
+        for (const side of ['blue', 'red'] as const) {
+          next.draft.teams[side] = { picks: snapshot.teams[side].picks.map(pick => ({ championId: pick.championId, locked: pick.locked })), bans: [...snapshot.teams[side].bans] };
+          snapshot.teams[side].picks.forEach((pick, index) => { if (pick.player !== undefined) next.match.teams[side].players[index] = pick.player.slice(0, 24); });
+        }
+        next.lcu.feed = 'champ-select'; next.lcu.sessionId = snapshot.feedId; next.lcu.lastPayloadAt = snapshot.observedAt;
+      } else if (update.feed !== 'champ-select' || update.sessionId !== this.state.lcu.sessionId) next.lcu.lastPayloadAt = null;
+      reconcileOutput(next);
+      // A repeated poll refreshes liveness, but does not rewrite the disk just for timestamps.
+      const comparable = (state: BroadcastState) => JSON.stringify({ ...state, lcu: { ...state.lcu, lastSeenAt: null, lastPayloadAt: null } });
+      if (comparable(next) === comparable(this.state)) { this.state.lcu = next.lcu; return this.getState(); }
+      return this.commit(next, 'LCU feed updated', 'lcu');
+    });
+  }
+  async ingestDraftFeed(snapshot: DraftFeedSnapshot) {
+    return this.ingestLcuFrame({ connected: true, message: 'LCU draft', feed: 'champ-select', sessionId: snapshot.feedId }, snapshot);
+  }
+  async setLcuStatus(update: Partial<BroadcastState['lcu']> & Pick<BroadcastState['lcu'], 'connected' | 'message'>) { return this.ingestLcuFrame(update); }
+  async ingestPostMatch(data: PostMatchData, options: { matchId: string; source: Exclude<PostMatchDataSource, 'manual'>; confidence: ValidationConfidence; warnings?: string[]; missingFields?: string[]; generation?: number }) {
+    return this.serial(async () => {
+      if (options.generation !== undefined && !this.isCurrentFetch(options.generation)) return this.getState();
+      const next = structuredClone(this.state);
+      next.activeOutput = 'none'; next.outputOwner = 'operator';
+      next.postMatch = { status: 'review', matchId: options.matchId, source: options.source, baselineSource: options.source, lastSyncedAt: new Date().toISOString(), confidence: options.confidence, baselineConfidence: options.confidence, baseline: structuredClone(data), data: structuredClone(data), overrideFields: [], warnings: options.warnings ?? [], missingFields: options.missingFields ?? [], baselineMissingFields: options.missingFields ?? [] };
+      reconcileOutput(next);
+      return this.commit(next, 'Post-match data loaded', options.source === 'lcu-provisional' ? 'lcu' : 'mock');
+    });
+  }
+  async failPostMatch(message: string, generation?: number) {
+    return this.serial(async () => {
+      if (generation !== undefined && !this.isCurrentFetch(generation)) return this.getState();
+      const next = structuredClone(this.state);
+      next.activeOutput = 'none'; next.outputOwner = 'operator'; next.postMatch.status = 'error'; next.postMatch.confidence = 'unverified'; next.postMatch.warnings = [message];
+      reconcileOutput(next);
+      return this.commit(next, 'Post-match fetch failed', 'manual');
+    });
+  }
+  private async commit(candidate: BroadcastState, label: string, source: SourceMode, log = true) {
+    const next = structuredClone(candidate);
+    next.revision = this.state.revision + 1; next.serverInstanceId = ''; next.storageWarning = null;
+    next.source = next.draft.manualOverride ? 'manual' : source;
+    const entry: EventEntry = { id: crypto.randomUUID(), at: new Date().toISOString(), source, label, revision: next.revision };
+    if (log) next.events = [entry, ...this.state.events].slice(0, 80);
+    validateState(next);
+    try { await this.persist(next); }
+    catch { this.warning = 'Không lưu được dữ liệu. Thay đổi chưa áp dụng.'; throw new DomainError('SAVE_FAILED', this.warning, [], 503); }
     this.state = next;
-    return this.commit("Đồng bộ draft từ LCU", "lcu");
-  }
-
-  async ingestPostMatch(data: PostMatchData, options: {
-    matchId: string;
-    source: Exclude<PostMatchDataSource, "manual">;
-    confidence: ValidationConfidence;
-    warnings?: string[];
-  }) {
-    const next = this.getState();
-    next.lifecycle = "post-match";
-    next.activeOutput = "none";
-    next.postMatch = {
-      status: "review",
-      matchId: options.matchId,
-      source: options.source,
-      baselineSource: options.source,
-      lastSyncedAt: new Date().toISOString(),
-      confidence: options.confidence,
-      baselineConfidence: options.confidence,
-      baseline: structuredClone(data),
-      data: structuredClone(data),
-      overrideFields: [],
-      warnings: options.warnings ?? [],
-    };
-    this.state = next;
-    return this.commit("Nạp dữ liệu post-match", options.source === "lcu-provisional" ? "lcu" : "mock");
-  }
-
-  async failPostMatch(message: string) {
-    this.state.activeOutput = "none";
-    this.state.lifecycle = "post-match";
-    this.state.postMatch.status = "error";
-    this.state.postMatch.confidence = "unverified";
-    this.state.postMatch.warnings = [message];
-    return this.commit("Lỗi lấy dữ liệu post-match", "manual");
-  }
-
-  async setLcuStatus(update: Partial<BroadcastState["lcu"]> & Pick<BroadcastState["lcu"], "connected" | "message">) {
-    const next = {
-      ...this.state.lcu,
-      ...update,
-      lastSeenAt: update.connected && (!this.state.lcu.connected || !this.state.lcu.lastSeenAt) ? new Date().toISOString() : update.lastSeenAt ?? this.state.lcu.lastSeenAt,
-    };
-    if (!update.connected) {
-      next.feed = "offline" as const;
-      next.gameflowPhase = null;
-      next.sessionKind = "unknown" as const;
-      next.sessionId = null;
-      next.warnings = [];
+    if (this.warning === 'Không lưu được dữ liệu. Thay đổi chưa áp dụng.') this.warning = null;
+    if (log) {
+      try {
+        await this.fault?.('log');
+        const logPath = path.join(this.dataDir, 'events.jsonl');
+        const size = await stat(logPath).then(info => info.size, error => { if (error.code === 'ENOENT') return 0; throw error; });
+        if (size >= 10 * 1024 * 1024) {
+          await unlink(`${logPath}.4`).catch(error => { if (error.code !== 'ENOENT') throw error; });
+          for (let index = 3; index >= 0; index--) await rename(index ? `${logPath}.${index}` : logPath, `${logPath}.${index + 1}`).catch(error => { if (error.code !== 'ENOENT') throw error; });
+        }
+        await appendFile(logPath, `${JSON.stringify(entry)}\n`);
+      } catch { this.warning = 'Dữ liệu đã lưu. Event log đang lỗi.'; }
     }
-    const phase = next.gameflowPhase;
-    const draftVisible = next.feed === "champ-select" || next.feed === "unresolved" || phase === "ChampSelect";
-    const postMatch = ["WaitingForStats", "PreEndOfGame", "EndOfGame"].includes(phase ?? "");
-    const inGame = ["GameStart", "InProgress", "Reconnect"].includes(phase ?? "");
-    const postMatchOwnsOutput = this.state.activeOutput === "post-match" || this.state.postMatch.status === "live";
-    const lifecycle = postMatchOwnsOutput ? "post-match" : draftVisible ? "draft" : postMatch ? "post-match" : inGame ? "in-game" : this.state.lifecycle;
-    const output = postMatchOwnsOutput ? "post-match" : draftVisible ? "draft" : "none";
-    if (JSON.stringify(this.state.lcu) === JSON.stringify(next) && (this.state.draft.manualOverride || (this.state.activeOutput === output && this.state.lifecycle === lifecycle))) return this.getState();
-    this.state.lcu = next;
-    if (!this.state.draft.manualOverride) {
-      this.state.activeOutput = output;
-      this.state.lifecycle = lifecycle;
-      this.state.source = update.connected ? "lcu" : "mock";
-    }
-    return this.commit(update.connected ? "LCU đã kết nối" : "LCU mất kết nối", "lcu");
+    const result = this.getState();
+    for (const listener of this.listeners) { try { listener(result); } catch { this.warning = 'Một kết nối chưa nhận được state mới.'; } }
+    return result;
   }
-
-  private async undo(source: SourceMode) {
-    const previous = this.undoStack.pop();
-    if (!previous) return this.getState();
-    this.redoStack.push(this.getState());
-    this.state = previous;
-    return this.commit("Hoàn tác", source);
+  private async persist(state: BroadcastState) {
+    const destination = path.join(this.dataDir, 'snapshot.json');
+    const temp = path.join(this.dataDir, `snapshot-${crypto.randomUUID()}.tmp`);
+    try {
+      try {
+        const raw = await readFile(destination, 'utf8');
+        migrateSavedState(JSON.parse(raw));
+        const backup = `snapshot-${String(this.state.revision).padStart(16, '0')}-${Date.now()}-${crypto.randomUUID()}.json`;
+        await copyFile(destination, path.join(this.dataDir, 'backups', backup));
+      } catch (error) { if (!(error instanceof SyntaxError || error instanceof DomainError) && (error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
+      const handle = await open(temp, 'wx');
+      try { await this.fault?.('write'); await handle.writeFile(JSON.stringify(state, null, 2)); await this.fault?.('flush'); await handle.sync(); }
+      finally { await handle.close(); }
+      for (let attempt = 0; ; attempt++) {
+        try { await this.fault?.('rename'); await rename(temp, destination); break; }
+        catch (error) { if (attempt === 3 || !['EBUSY', 'EPERM', 'EACCES'].includes((error as NodeJS.ErrnoException).code ?? '')) throw error; await new Promise(resolve => setTimeout(resolve, [50, 100, 200][attempt])); }
+      }
+      const backups = (await readdir(path.join(this.dataDir, 'backups')).catch(() => [])).filter(name => /^snapshot-\d+-[\w-]+\.json$/.test(name)).sort().reverse();
+      for (const name of backups.slice(10)) await unlink(path.join(this.dataDir, 'backups', name)).catch(() => undefined);
+    } finally { await unlink(temp).catch(() => undefined); }
   }
-  private async redo(source: SourceMode) {
-    const next = this.redoStack.pop();
-    if (!next) return this.getState();
-    this.undoStack.push(this.getState());
-    this.state = next;
-    return this.commit("Làm lại", source);
-  }
-  private async commit(label: string, source: SourceMode) {
-    this.revisionCounter += 1;
-    this.state.revision = this.revisionCounter;
-    this.state.source = this.state.draft.manualOverride ? "manual" : source;
-    const entry: EventEntry = { id: crypto.randomUUID(), at: new Date().toISOString(), source, label, revision: this.state.revision };
-    this.state.events = [entry, ...this.state.events].slice(0, 80);
-    await appendFile(path.join(this.dataDir, "events.jsonl"), `${JSON.stringify(entry)}\n`, "utf8");
-    await this.persist();
-    this.emit();
-    return this.getState();
-  }
-  private async persist() { await writeFile(path.join(this.dataDir, "snapshot.json"), JSON.stringify(this.state, null, 2), "utf8"); }
-  private emit() { const state = this.getState(); this.listeners.forEach((listener) => listener(state)); }
 }

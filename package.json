@@ -1,6 +1,6 @@
 {
   "name": "virtualhud-lol",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Local League of Legends ban/pick and post-match overlay for OBS.",
   "private": true,
   "license": "MIT",
@@ -12,7 +12,14 @@
   "bugs": {
     "url": "https://github.com/vitural2904/virtualhud-lol/issues"
   },
-  "keywords": ["league-of-legends", "obs", "overlay", "champ-select", "post-match", "lcu"],
+  "keywords": [
+    "league-of-legends",
+    "obs",
+    "overlay",
+    "champ-select",
+    "post-match",
+    "lcu"
+  ],
   "type": "module",
   "scripts": {
     "assets:champions": "node scripts/fetch-champion-assets.mjs",
@@ -24,28 +31,47 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "check": "tsc --noEmit && vitest run && vite build"
+    "react-bits:list": "jsrepo list",
+    "react-bits:add": "jsrepo add",
+    "check": "tsc --noEmit && vitest run && vite build",
+    "test:browser": "playwright test",
+    "test:coverage": "vitest run --coverage",
+    "test:stress": "node --import tsx scripts/stress-test.ts"
   },
   "engines": {
-    "node": ">=22 <23"
+    "node": ">=22.19 <23"
   },
   "dependencies": {
     "@fastify/static": "10.1.3",
     "@fastify/websocket": "^11.2.0",
+    "@hugeicons/core-free-icons": "^4.3.5",
+    "@hugeicons/react": "^1.1.10",
     "@phosphor-icons/react": "^2.1.10",
     "@sinclair/typebox": "^0.34.41",
-    "@vitejs/plugin-react": "5.0.4",
-    "fastify": "5.8.5",
+    "fastify": "5.12.5",
+    "motion": "^12.43.0",
     "react": "19.2.0",
     "react-dom": "19.2.0",
-    "vite": "6.4.3"
+    "sharp": "0.35.4"
   },
   "devDependencies": {
     "@types/node": "^22.15.30",
     "@types/react": "^19.1.6",
     "@types/react-dom": "^19.1.5",
+    "jsrepo": "^3.8.1",
     "tsx": "^4.20.5",
     "typescript": "^5.9.2",
-    "vitest": "3.2.7"
+    "vitest": "4.1.11",
+    "vite": "6.4.3",
+    "@vitejs/plugin-react": "5.0.4",
+    "@vitest/coverage-v8": "4.1.11",
+    "@playwright/test": "1.63.0",
+    "@axe-core/playwright": "4.11.1"
+  },
+  "overrides": {
+    "fast-uri@^4.0.0": "4.1.3",
+    "browserslist": "4.29.1",
+    "fast-uri@^3.0.0": "3.1.6",
+    "baseline-browser-mapping": "2.11.26"
   }
 }

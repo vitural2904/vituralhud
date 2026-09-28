@@ -228,7 +228,7 @@ export function normalizeChampSelectSession(
       picks[actor.side][actor.index].championId = championId;
       picks[actor.side][actor.index].locked = action.completed;
     }
-    if (action.type === "ban" && championId && banIndex[actor.side] < 5) {
+    if (action.type === "ban" && banIndex[actor.side] < 5) {
       bans[actor.side][banIndex[actor.side]] = championId;
       banIndex[actor.side] += 1;
     }

@@ -71,7 +71,7 @@ export async function pollLcuOnce(client: JsonClient, manager: StateManager): Pr
     return { hasSession: true, status: status.lcu };
   }
 
-  await manager.setLcuStatus({
+  const state = await manager.ingestLcuFrame({
     connected: true,
     message: normalized.sessionKind === "spectator"
       ? "Đang đọc champ select · spectator"
@@ -81,8 +81,7 @@ export async function pollLcuOnce(client: JsonClient, manager: StateManager): Pr
     sessionKind: normalized.sessionKind,
     sessionId: normalized.snapshot.feedId,
     warnings: normalized.warnings,
-  });
-  const state = await manager.ingestDraftFeed(normalized.snapshot);
+  }, normalized.snapshot);
   return { hasSession: true, status: state.lcu };
 }
 
@@ -114,7 +113,7 @@ export function startLcuAdapter(manager: StateManager) {
       await manager.setLcuStatus({
         connected: false,
         message: error instanceof Error ? error.message : "LCU chưa sẵn sàng",
-      });
+      }).catch(() => undefined);
       reconnectDelay = Math.min(12_000, Math.round(reconnectDelay * 1.6));
       schedule(reconnectDelay);
     }

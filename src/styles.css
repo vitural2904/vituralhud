@@ -1,8 +1,9 @@
-@font-face { font-family: "Anybody"; src: url("/fonts/anybody/Anybody-Variable.woff2") format("woff2"); font-weight: 100 900; font-stretch: 50% 150%; font-display: swap; }
 @font-face { font-family: "Be Vietnam Pro"; src: url("/fonts/be-vietnam-pro/BeVietnamPro-Regular.woff2") format("woff2"); font-weight: 400; font-display: swap; }
 @font-face { font-family: "Be Vietnam Pro"; src: url("/fonts/be-vietnam-pro/BeVietnamPro-SemiBold.woff2") format("woff2"); font-weight: 600; font-display: swap; }
+@font-face { font-family: "Be Vietnam Pro"; src: url("/fonts/be-vietnam-pro/BeVietnamPro-Medium.woff2") format("woff2"); font-weight: 500; font-display: swap; }
+@font-face { font-family: "Be Vietnam Pro"; src: url("/fonts/be-vietnam-pro/BeVietnamPro-Bold.woff2") format("woff2"); font-weight: 700; font-display: swap; }
 
-:root { color: #efece3; background: #0c0d0e; font-family: "Be Vietnam Pro", system-ui, sans-serif; font-synthesis: none; --panel: #17191b; --line: #34383b; --muted: #92989a; --ivory: #f1eee6; --brass: #c6a96b; --blue: #4f91d8; --red: #c84b42; }
+:root { color: #efece3; background: #0c0d0e; font-family: "Lens Grotesk", "Be Vietnam Pro", system-ui, sans-serif; font-synthesis: none; --panel: #17191b; --line: #34383b; --muted: #92989a; --ivory: #f1eee6; --brass: #c6a96b; --blue: #4f91d8; --red: #c84b42; }
 * { box-sizing: border-box; }
 html, body, #root { margin: 0; min-width: 320px; min-height: 100%; }
 body { min-height: 100vh; -webkit-font-smoothing: antialiased; }
@@ -13,7 +14,7 @@ button { color: inherit; }
 
 body:has(.overlay-shell), html:has(.overlay-shell), #root:has(.overlay-shell) { background: transparent; overflow: hidden; }
 .overlay-shell { position: relative; width: 100vw; height: 100vh; overflow: hidden; background: transparent; pointer-events: none; }
-.overlay-status { position: absolute; right: 1.1vw; bottom: 38.2vh; color: rgba(255,255,255,.55); font: 600 clamp(8px, .55vw, 11px)/1 "Anybody"; letter-spacing: .14em; display: flex; align-items: center; gap: .45vw; transition: opacity 180ms ease; }
+.overlay-status { position: absolute; right: 1.1vw; bottom: 38.2vh; color: rgba(255,255,255,.55); font: 600 clamp(8px, .55vw, 11px)/1 "Lens Grotesk", "Be Vietnam Pro", sans-serif; letter-spacing: .14em; display: flex; align-items: center; gap: .45vw; transition: opacity 180ms ease; }
 .overlay-shell.is-hidden .overlay-status { opacity: 0; }
 .online, .offline { width: 7px; height: 7px; display: inline-block; border-radius: 50%; background: #65aa7d; }
 .offline { background: #d05b51; }
@@ -28,7 +29,7 @@ body:has(.overlay-shell), html:has(.overlay-shell), #root:has(.overlay-shell) { 
 .overlay-shell.is-hidden .ban-group { opacity: 0; transition-delay: 260ms; }
 .overlay-shell.is-hidden .ban-group--blue { transform: translateX(-102%); }
 .overlay-shell.is-hidden .ban-group--red { transform: translateX(102%); }
-.ban-label { color: #777d80; font: 750 clamp(8px, .65vw, 13px)/1 "Anybody"; font-stretch: 125%; letter-spacing: .16em; margin: 0 .2vw; }
+.ban-label { color: #777d80; font: 750 clamp(8px, .65vw, 13px)/1 "Lens Grotesk", "Be Vietnam Pro", sans-serif; font-stretch: 125%; letter-spacing: .16em; margin: 0 .2vw; }
 .ban-tile { position: relative; flex: 0 0 clamp(40px, 2.7vw, 52px); width: clamp(40px, 2.7vw, 52px); aspect-ratio: 1; overflow: hidden; background: #1d2022; border: 1px solid #313538; }
 .ban-tile img { width: 100%; height: 100%; display: block; object-fit: cover; object-position: center; filter: grayscale(.8) brightness(.62) contrast(1.1); }
 .ban-tile::after { content: ""; position: absolute; inset: auto 0 0; height: 2px; background: #887650; }
@@ -48,28 +49,28 @@ body:has(.overlay-shell), html:has(.overlay-shell), #root:has(.overlay-shell) { 
 .pick-card > img { width: 100%; height: 100%; display: block; object-fit: cover; object-position: 50% 12%; filter: saturate(.92) contrast(1.04); }
 .pick-shade { position: absolute; inset: 0; background: linear-gradient(to top, rgba(5,7,8,.98), transparent 56%), linear-gradient(to right, rgba(0,0,0,.16), transparent 45%); }
 .pick-meta { position: absolute; inset: auto .55vw .7vh; display: grid; gap: .35vh; min-width: 0; }
-.pick-champion { overflow: hidden; color: #c4c0b5; font: 680 clamp(9px, .62vw, 13px)/1 "Anybody"; font-stretch: 112%; letter-spacing: .055em; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
+.pick-champion { overflow: hidden; color: #c4c0b5; font: 680 clamp(9px, .62vw, 13px)/1 "Lens Grotesk", "Be Vietnam Pro", sans-serif; font-stretch: 112%; letter-spacing: .055em; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
 .pick-player-line { display: flex; align-items: center; gap: .42vw; min-width: 0; }
 .pick-meta svg { width: .75vw; min-width: 11px; color: var(--brass); }
 .pick-role { width: clamp(13px, .78vw, 16px); height: clamp(13px, .78vw, 16px); flex: 0 0 auto; object-fit: contain; }
-.pick-player { overflow: hidden; text-overflow: ellipsis; color: white; font-family: "Be Vietnam Pro", sans-serif; font-size: clamp(10px, .82vw, 16px); font-weight: 600; line-height: 1.12; white-space: nowrap; letter-spacing: 0; }
-.pick-empty { height: 100%; display: grid; place-items: center; color: #555b5e; font: 700 1.4vw/1 "Anybody"; }
+.pick-player { overflow: hidden; text-overflow: ellipsis; color: white; font-family: "Lens Grotesk", "Be Vietnam Pro", sans-serif; font-size: clamp(10px, .82vw, 16px); font-weight: 600; line-height: 1.12; white-space: nowrap; letter-spacing: 0; }
+.pick-empty { height: 100%; display: grid; place-items: center; color: #555b5e; font: 700 1.4vw/1 "Lens Grotesk", "Be Vietnam Pro", sans-serif; }
 .pick-card.is-active::after { content: ""; position: absolute; inset: 0; border: 2px solid var(--blue); pointer-events: none; }
 .pick-card--red.is-active::after { border-color: var(--red); }
 .match-core { background: #16181a; display: flex; flex-direction: column; justify-content: center; align-items: stretch; text-align: center; padding: .8vh 1vw; transform-origin: center bottom; transition: opacity 260ms ease, transform 420ms cubic-bezier(.22,.78,.2,1); }
 .overlay-shell.is-visible .match-core { transition-delay: 310ms; }
 .overlay-shell.is-hidden .match-core { opacity: 0; transform: translateY(18px) scale(.985); transition-delay: 55ms; }
 .center-meta { display: grid; justify-items: center; gap: .3vh; }
-.center-meta > strong { color: var(--ivory); font: 780 clamp(13px, .95vw, 19px)/1 "Anybody"; font-stretch: 122%; letter-spacing: .04em; }
-.center-meta > span { color: #9ba0a1; font: 600 clamp(8px, .52vw, 11px)/1.1 "Be Vietnam Pro"; letter-spacing: .055em; }
+.center-meta > strong { color: var(--ivory); font: 780 clamp(13px, .95vw, 19px)/1 "Lens Grotesk", "Be Vietnam Pro", sans-serif; font-stretch: 122%; letter-spacing: .04em; }
+.center-meta > span { color: #9ba0a1; font: 600 clamp(8px, .52vw, 11px)/1.1 "Lens Grotesk", "Be Vietnam Pro"; letter-spacing: .055em; }
 .phase { margin-top: .55vh; display: flex; align-items: center; justify-content: center; gap: .48vw; color: #d4d0c5; }
-.phase b { font: 700 clamp(9px, .68vw, 13px)/1 "Anybody"; font-stretch: 122%; letter-spacing: .09em; }
+.phase b { font: 700 clamp(9px, .68vw, 13px)/1 "Lens Grotesk", "Be Vietnam Pro", sans-serif; font-stretch: 122%; letter-spacing: .09em; }
 .phase svg { width: clamp(9px, .62vw, 12px); height: clamp(9px, .62vw, 12px); color: var(--brass); }
 .center-identities { display: grid; grid-template-columns: minmax(68px, 1fr) auto minmax(68px, 1fr); align-items: end; gap: .7vw; margin-top: .85vh; }
 .team-identity { display: grid; justify-items: center; align-content: end; gap: .55vh; }
 .center-logo { width: clamp(60px, 4.1vw, 80px); height: clamp(60px, 4.1vw, 80px); display: block; object-fit: contain; }
 .countdown-block { display: grid; justify-items: center; align-content: end; }
-.timer { color: var(--ivory); font: 820 clamp(56px, 3.8vw, 76px)/.82 "Anybody"; font-stretch: 124%; font-variant-numeric: tabular-nums; letter-spacing: -.035em; }
+.timer { color: var(--ivory); font: 820 clamp(56px, 3.8vw, 76px)/.82 "Lens Grotesk", "Be Vietnam Pro", sans-serif; font-stretch: 124%; font-variant-numeric: tabular-nums; letter-spacing: -.035em; }
 .timer--blue { text-shadow: 0 2px 0 rgba(79,145,216,.4); }
 .timer--red { text-shadow: 0 2px 0 rgba(200,75,66,.4); }
 .team-footers { grid-column: 1; grid-row: 3; min-width: 0; min-height: 0; display: grid; grid-template-columns: 1fr clamp(320px, 18vw, 360px) 1fr; }
@@ -77,7 +78,7 @@ body:has(.overlay-shell), html:has(.overlay-shell), #root:has(.overlay-shell) { 
 .overlay-shell.is-visible .team-footer { transition-delay: 420ms; }
 .overlay-shell.is-hidden .team-footer { opacity: 0; transform: translateY(105%); transition-delay: 0ms; }
 .team-footer--red { justify-content: flex-end; text-align: right; }
-.team-footer strong { font: 780 clamp(11px, .95vw, 19px)/1 "Anybody"; font-stretch: 116%; letter-spacing: .03em; }
+.team-footer strong { font: 780 clamp(11px, .95vw, 19px)/1 "Lens Grotesk", "Be Vietnam Pro", sans-serif; font-stretch: 116%; letter-spacing: .03em; }
 .score-pips { display: flex; align-items: center; justify-content: center; gap: clamp(5px, .36vw, 8px); }
 .score-pips--red { flex-direction: row-reverse; }
 .score-pips i { width: clamp(10px, .72vw, 14px); aspect-ratio: 1; display: block; background: transparent; border: 1px solid color-mix(in srgb, var(--score-color) 72%, #d7d3c9); }
@@ -92,19 +93,19 @@ body:has(.overlay-shell), html:has(.overlay-shell), #root:has(.overlay-shell) { 
 .product-lockup { gap: 12px; }
 .product-lockup > svg { color: var(--brass); font-size: 25px; }
 .product-lockup div { display: grid; gap: 2px; }
-.product-lockup strong { font: 800 17px/1 "Anybody"; font-stretch: 120%; letter-spacing: .08em; }
-.product-lockup span { color: #747a7c; font: 650 9px/1 "Anybody"; letter-spacing: .16em; }
-.topbar-status { gap: 9px; color: #a9adae; font: 650 10px/1 "Anybody"; letter-spacing: .08em; }
+.product-lockup strong { font: 800 17px/1 "Lens Grotesk", "Be Vietnam Pro", sans-serif; font-stretch: 120%; letter-spacing: .08em; }
+.product-lockup span { color: #747a7c; font: 650 9px/1 "Lens Grotesk", "Be Vietnam Pro", sans-serif; letter-spacing: .16em; }
+.topbar-status { gap: 9px; color: #a9adae; font: 650 10px/1 "Lens Grotesk", "Be Vietnam Pro", sans-serif; letter-spacing: .08em; }
 .topbar-status b { padding-left: 12px; color: #666c6e; border-left: 1px solid #383c3f; font-weight: 650; }
-.preview-link { justify-self: end; gap: 7px; color: var(--ivory); text-decoration: none; font: 700 11px/1 "Anybody"; letter-spacing: .08em; border-bottom: 1px solid var(--brass); padding: 8px 0; }
+.preview-link { justify-self: end; gap: 7px; color: var(--ivory); text-decoration: none; font: 700 11px/1 "Lens Grotesk", "Be Vietnam Pro", sans-serif; letter-spacing: .08em; border-bottom: 1px solid var(--brass); padding: 8px 0; }
 .preview-link svg { font-size: 15px; }
 .control-body { display: grid; grid-template-columns: 238px minmax(0, 1fr); max-width: 1680px; margin: 0 auto; }
 .control-rail { min-height: calc(100vh - 68px); padding: 28px 20px; border-right: 1px solid #2a2e31; background: #131517; }
-.rail-label, .section-kicker { display: block; color: #717779; font: 680 10px/1 "Anybody"; font-stretch: 115%; letter-spacing: .16em; }
+.rail-label, .section-kicker { display: block; color: #717779; font: 680 10px/1 "Lens Grotesk", "Be Vietnam Pro", sans-serif; font-stretch: 115%; letter-spacing: .16em; }
 .source-card { margin-top: 15px; padding: 18px 0; display: grid; grid-template-columns: 25px 1fr; gap: 4px 8px; border-top: 1px solid #313538; border-bottom: 1px solid #313538; }
 .source-card > svg { grid-row: 1 / 4; color: var(--brass); font-size: 23px; }
 .source-card span { color: #8b9092; font-size: 11px; }
-.source-card strong { font: 720 12px/1.25 "Anybody"; letter-spacing: .05em; }
+.source-card strong { font: 720 12px/1.25 "Lens Grotesk", "Be Vietnam Pro", sans-serif; letter-spacing: .05em; }
 .source-card small { color: #656b6d; line-height: 1.35; }
 .switch-row { margin-top: 16px; display: flex; justify-content: space-between; gap: 10px; align-items: center; }
 .switch-row span { display: grid; gap: 2px; }
@@ -123,13 +124,13 @@ body:has(.overlay-shell), html:has(.overlay-shell), #root:has(.overlay-shell) { 
 .event-log time { color: #555b5d; }
 .control-workspace { padding: 34px 38px 46px; min-width: 0; }
 .workspace-heading { display: flex; justify-content: space-between; align-items: end; margin-bottom: 22px; }
-.workspace-heading h1 { margin: 5px 0 0; font: 760 clamp(25px, 2.2vw, 38px)/1 "Anybody"; font-stretch: 118%; letter-spacing: -.025em; }
-.safety-note { display: flex; align-items: center; gap: 6px; color: #829a88; font: 650 10px/1 "Anybody"; letter-spacing: .08em; }
+.workspace-heading h1 { margin: 5px 0 0; font: 760 clamp(25px, 2.2vw, 38px)/1 "Lens Grotesk", "Be Vietnam Pro", sans-serif; font-stretch: 118%; letter-spacing: -.025em; }
+.safety-note { display: flex; align-items: center; gap: 6px; color: #829a88; font: 650 10px/1 "Lens Grotesk", "Be Vietnam Pro", sans-serif; letter-spacing: .08em; }
 .safety-note svg { font-size: 17px; }
 .panel { background: #17191b; border: 1px solid #303437; }
 .match-panel { display: grid; grid-template-columns: 2fr 1fr 1fr .8fr 1.4fr; gap: 12px; padding: 15px; margin-bottom: 16px; }
 .field { display: grid; gap: 7px; min-width: 0; }
-.field > span, .score-input { color: #7d8385; font: 650 9px/1 "Anybody"; letter-spacing: .1em; text-transform: uppercase; }
+.field > span, .score-input { color: #7d8385; font: 650 9px/1 "Lens Grotesk", "Be Vietnam Pro", sans-serif; letter-spacing: .1em; text-transform: uppercase; }
 input, select { width: 100%; min-height: 38px; color: #e8e5dc; background: #111315; border: 1px solid #373b3e; padding: 0 10px; border-radius: 0; }
 input:hover, select:hover { border-color: #555b5e; }
 .champion-search { position: relative; min-width: 0; }
@@ -150,19 +151,19 @@ input:hover, select:hover { border-color: #555b5e; }
 .team-heading { display: flex; align-items: center; gap: 11px; min-width: 0; }
 .team-heading img { width: 38px; height: 38px; flex: 0 0 auto; object-fit: contain; }
 .team-heading > div { min-width: 0; }
-.panel-header h2 { margin: 4px 0 0; font: 730 21px/1 "Anybody"; font-stretch: 116%; }
+.panel-header h2 { margin: 4px 0 0; font: 730 21px/1 "Lens Grotesk", "Be Vietnam Pro", sans-serif; font-stretch: 116%; }
 .score-input { display: flex; align-items: center; gap: 9px; }
 .score-input input { width: 50px; font-size: 17px; font-weight: 700; text-align: center; }
 .team-fields { display: grid; grid-template-columns: 2fr 1fr 72px; gap: 11px; padding: 14px 17px; border-bottom: 1px solid #2b2f31; }
 .color-field input { padding: 4px; cursor: pointer; }
 .team-logo-picker { grid-column: 1 / -1; min-width: 0; display: grid; gap: 8px; padding-top: 4px; }
-.team-logo-picker__label, .team-logo-picker__controls label > span { color: #7d8385; font: 650 9px/1 "Anybody"; letter-spacing: .1em; text-transform: uppercase; }
+.team-logo-picker__label, .team-logo-picker__controls label > span { color: #7d8385; font: 650 9px/1 "Lens Grotesk", "Be Vietnam Pro", sans-serif; letter-spacing: .1em; text-transform: uppercase; }
 .team-logo-picker__body { min-width: 0; display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 10px; }
 .team-logo-picker__preview { width: 74px; height: 74px; display: grid; place-items: center; overflow: hidden; padding: 8px; background: #111315; border: 1px solid #373b3e; }
 .team-logo-picker__preview img { max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; }
 .team-logo-picker__controls { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) 142px; gap: 8px; align-items: end; }
 .team-logo-picker__controls label { min-width: 0; display: grid; gap: 7px; }
-.team-logo-picker__controls button { min-height: 38px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 0 10px; color: #ded9cd; background: #242628; border: 1px solid #454a4d; cursor: pointer; font: 680 9px/1 "Anybody"; letter-spacing: .05em; }
+.team-logo-picker__controls button { min-height: 38px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 0 10px; color: #ded9cd; background: #242628; border: 1px solid #454a4d; cursor: pointer; font: 680 9px/1 "Lens Grotesk", "Be Vietnam Pro", sans-serif; letter-spacing: .05em; }
 .team-logo-picker__controls button:hover { background: #2c2f31; border-color: #676d70; }
 .team-logo-picker__controls button:disabled { cursor: wait; opacity: .65; }
 .team-logo-picker__input { display: none; }
@@ -174,21 +175,21 @@ input:hover, select:hover { border-color: #555b5e; }
 .slot-role { width: 23px; height: 23px; justify-self: center; object-fit: contain; }
 .slot-control input { min-height: 35px; }
 .ban-controls { padding: 14px 17px 17px; display: grid; grid-template-columns: 33px repeat(5, minmax(0, 1fr)); gap: 6px; align-items: center; }
-.ban-controls > span { color: #707678; font: 650 9px/1 "Anybody"; letter-spacing: .08em; }
+.ban-controls > span { color: #707678; font: 650 9px/1 "Lens Grotesk", "Be Vietnam Pro", sans-serif; letter-spacing: .08em; }
 .ban-controls .champion-search { min-width: 0; }
 .ban-controls .champion-search > input { min-width: 0; padding: 0 25px 0 6px; font-size: 10px; }
 .error-banner { margin-bottom: 12px; padding: 10px 12px; background: #4a2422; border-left: 3px solid var(--red); font-size: 12px; }
 .transport-bar { position: fixed; z-index: 30; inset: auto 0 0; height: 76px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 0 28px; background: #0c0e0f; border-top: 1px solid #3a3e40; box-shadow: 0 -10px 28px rgba(0,0,0,.28); }
 .timer-control { display: flex; align-items: center; gap: 12px; }
 .icon-button { width: 39px; height: 39px; display: grid; place-items: center; color: #151718; background: var(--brass); border-color: var(--brass); }
-.timer-control > span { min-width: 108px; color: white; font: 760 31px/1 "Anybody"; font-stretch: 118%; font-variant-numeric: tabular-nums; }
+.timer-control > span { min-width: 108px; color: white; font: 760 31px/1 "Lens Grotesk", "Be Vietnam Pro", sans-serif; font-stretch: 118%; font-variant-numeric: tabular-nums; }
 .timer-control input { width: 70px; min-height: 35px; }
-.phase-status { display: flex; align-items: center; gap: 8px; color: #9ba0a2; font: 660 11px/1 "Anybody"; letter-spacing: .08em; }
+.phase-status { display: flex; align-items: center; gap: 8px; color: #9ba0a2; font: 660 11px/1 "Lens Grotesk", "Be Vietnam Pro", sans-serif; letter-spacing: .08em; }
 .phase-status svg { color: var(--brass); }
 .spin { animation: spin 1.8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .transport-actions { justify-self: end; display: flex; gap: 8px; }
-.transport-actions button { min-height: 41px; padding: 0 17px; color: #aeb2b3; font: 700 10px/1 "Anybody"; letter-spacing: .08em; }
+.transport-actions button { min-height: 41px; padding: 0 17px; color: #aeb2b3; font: 700 10px/1 "Lens Grotesk", "Be Vietnam Pro", sans-serif; letter-spacing: .08em; }
 .transport-actions .fade-action { display: flex; align-items: center; gap: 7px; min-width: 112px; justify-content: center; border-color: #66604f; color: #d9d3c3; }
 .transport-actions .fade-action svg { font-size: 16px; }
 .transport-actions .fade-action.is-live { border-color: #8ca18e; color: #dce8dd; background: #202722; }
@@ -227,15 +228,15 @@ input:hover, select:hover { border-color: #555b5e; }
 /* Unified control shell */
 .control-topbar { grid-template-columns: minmax(220px, 1fr) auto minmax(360px, 1fr); }
 .workspace-tabs { align-self: stretch; display: flex; }
-.workspace-tabs a { min-width: 132px; display: grid; place-items: center; padding: 0 18px; color: #72787a; border-right: 1px solid #292d30; text-decoration: none; font: 700 10px/1 "Anybody"; letter-spacing: .1em; }
+.workspace-tabs a { min-width: 132px; display: grid; place-items: center; padding: 0 18px; color: #72787a; border-right: 1px solid #292d30; text-decoration: none; font: 700 10px/1 "Lens Grotesk", "Be Vietnam Pro", sans-serif; letter-spacing: .1em; }
 .workspace-tabs a:first-child { border-left: 1px solid #292d30; }
 .workspace-tabs a:hover { color: #c9c6bd; background: #17191b; }
 .workspace-tabs a.is-active { color: var(--ivory); background: #1a1c1e; box-shadow: inset 0 -2px var(--brass); }
 .topbar-actions { justify-self: end; display: flex; align-items: center; gap: 24px; }
 .output-state { display: flex; align-items: center; justify-content: space-between; margin: 18px 0 28px; padding: 12px 0; border-bottom: 1px solid #303437; }
-.output-state span { color: #747a7c; font: 650 9px/1 "Anybody"; letter-spacing: .12em; }
-.output-state strong { color: #d7c28e; font: 730 11px/1 "Anybody"; letter-spacing: .08em; }
-.inline-switch { display: flex; align-items: center; gap: 8px; color: #8f9597; font: 700 9px/1 "Anybody"; letter-spacing: .08em; }
+.output-state span { color: #747a7c; font: 650 9px/1 "Lens Grotesk", "Be Vietnam Pro", sans-serif; letter-spacing: .12em; }
+.output-state strong { color: #d7c28e; font: 730 11px/1 "Lens Grotesk", "Be Vietnam Pro", sans-serif; letter-spacing: .08em; }
+.inline-switch { display: flex; align-items: center; gap: 8px; color: #8f9597; font: 700 9px/1 "Lens Grotesk", "Be Vietnam Pro", sans-serif; letter-spacing: .08em; }
 .inline-switch input { width: 18px; min-height: 18px; accent-color: var(--brass); }
 
 /* Post-match broadcast overlay */
@@ -250,24 +251,24 @@ body:has(.post-overlay), html:has(.post-overlay), #root:has(.post-overlay) { bac
 .post-logo-frame { min-width: 0; width: 100%; height: 13.5vh; display: grid; place-items: center; overflow: hidden; padding: 1.25vh .7vw; }
 .post-logo-frame img { max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; filter: drop-shadow(0 1px 0 rgba(255,255,255,.08)); }
 .post-team-copy { min-width: 0; display: grid; gap: .7vh; }
-.post-team-copy > span { color: #858b8d; font: 720 clamp(10px, .85vw, 17px)/1 "Anybody"; letter-spacing: .16em; }
+.post-team-copy > span { color: #858b8d; font: 720 clamp(10px, .85vw, 17px)/1 "Lens Grotesk", "Be Vietnam Pro", sans-serif; letter-spacing: .16em; }
 .post-team--blue .post-team-copy > span { color: #77aee2; }
 .post-team--red .post-team-copy > span { color: #df817a; }
-.post-team-copy strong { overflow: hidden; color: #f0ede4; font: 850 clamp(25px, 2.55vw, 50px)/.88 "Anybody"; font-stretch: 108%; letter-spacing: -.035em; text-overflow: ellipsis; white-space: nowrap; }
-.post-team > b { min-width: 0; width: 100%; overflow: hidden; color: #f0ede4; font: 850 clamp(38px, 3.75vw, 72px)/.9 "Anybody"; font-stretch: 116%; font-variant-numeric: tabular-nums; letter-spacing: -.055em; text-align: center; }
+.post-team-copy strong { overflow: hidden; color: #f0ede4; font: 850 clamp(25px, 2.55vw, 50px)/.88 "Lens Grotesk", "Be Vietnam Pro", sans-serif; font-stretch: 108%; letter-spacing: -.035em; text-overflow: ellipsis; white-space: nowrap; }
+.post-team > b { min-width: 0; width: 100%; overflow: hidden; color: #f0ede4; font: 850 clamp(38px, 3.75vw, 72px)/.9 "Lens Grotesk", "Be Vietnam Pro", sans-serif; font-stretch: 116%; font-variant-numeric: tabular-nums; letter-spacing: -.055em; text-align: center; }
 .post-duration { z-index: 2; min-width: 0; height: 72%; display: grid; place-items: center; align-content: center; gap: 1.1vh; background: #0b0c0d; border-right: 1px solid #414447; border-left: 1px solid #414447; }
-.post-duration span { color: #8d8f8d; font: 700 clamp(8px, .62vw, 12px)/1 "Anybody"; letter-spacing: .2em; }
-.post-duration strong { color: var(--brass); font: 850 clamp(38px, 4.5vw, 87px)/.9 "Anybody"; font-stretch: 118%; font-variant-numeric: tabular-nums; letter-spacing: -.055em; }
+.post-duration span { color: #8d8f8d; font: 700 clamp(8px, .62vw, 12px)/1 "Lens Grotesk", "Be Vietnam Pro", sans-serif; letter-spacing: .2em; }
+.post-duration strong { color: var(--brass); font: 850 clamp(38px, 4.5vw, 87px)/.9 "Lens Grotesk", "Be Vietnam Pro", sans-serif; font-stretch: 118%; font-variant-numeric: tabular-nums; letter-spacing: -.055em; }
 .post-rule { position: relative; height: 2.6vh; border-top: .65vh solid var(--brass); }
 .post-grid { position: relative; min-height: 0; display: grid; grid-template-columns: 46.5% minmax(0, 1fr); gap: 1vw; }
 .post-overview, .damage-panel, .match-leaders-panel { min-width: 0; background: #121416; border: 1px solid #2f3335; }
 .post-overview { display: grid; grid-template-rows: 8.7vh; grid-auto-rows: 1fr; padding: 0 1.4vw; }
 .post-section-title { min-width: 0; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #393d3f; }
-.post-section-title span { font: 760 clamp(10px, .9vw, 18px)/1 "Anybody"; font-stretch: 118%; letter-spacing: .08em; }
-.post-section-title small { color: #686e70; font: 650 clamp(7px, .5vw, 10px)/1 "Anybody"; letter-spacing: .12em; }
+.post-section-title span { font: 760 clamp(10px, .9vw, 18px)/1 "Lens Grotesk", "Be Vietnam Pro", sans-serif; font-stretch: 118%; letter-spacing: .08em; }
+.post-section-title small { color: #686e70; font: 650 clamp(7px, .5vw, 10px)/1 "Lens Grotesk", "Be Vietnam Pro", sans-serif; letter-spacing: .12em; }
 .post-metric { display: grid; grid-template-columns: 1fr 1.35fr 1fr; align-items: center; border-bottom: 1px solid #35393b; }
 .post-metric:last-child { border-bottom: 0; }
-.post-metric strong { color: #f0ede4; font: 800 clamp(23px, 2.3vw, 44px)/1 "Anybody"; font-stretch: 115%; font-variant-numeric: tabular-nums; }
+.post-metric strong { color: #f0ede4; font: 800 clamp(23px, 2.3vw, 44px)/1 "Lens Grotesk", "Be Vietnam Pro", sans-serif; font-stretch: 115%; font-variant-numeric: tabular-nums; }
 .post-metric strong:first-child { color: #72a8db; }
 .post-metric strong:last-child { color: #d77a72; text-align: right; }
 .post-metric-symbol { justify-self: center; width: clamp(27px, 2.25vw, 43px); height: clamp(27px, 2.25vw, 43px); color: #b8b2a3; object-fit: contain; }
@@ -287,7 +288,7 @@ img.post-metric-symbol { opacity: .9; filter: grayscale(1) sepia(.32) brightness
 .damage-track i { height: 100%; display: block; background: var(--pm-blue); }
 .damage-row--blue .damage-track i { margin-left: auto; }
 .damage-row--red .damage-track i { background: var(--pm-red); }
-.damage-row strong { color: #dcddd8; font: 760 clamp(9px, .75vw, 15px)/1 "Anybody"; font-variant-numeric: tabular-nums; text-align: right; }
+.damage-row strong { color: #dcddd8; font: 760 clamp(9px, .75vw, 15px)/1 "Lens Grotesk", "Be Vietnam Pro", sans-serif; font-variant-numeric: tabular-nums; text-align: right; }
 .damage-row--red strong { text-align: left; }
 .match-leaders-panel .post-section-title { height: 5.7vh; }
 .match-leaders-layout { height: calc(100% - 5.7vh); display: grid; grid-template-columns: minmax(0, 1.62fr) minmax(0, 1fr); padding-top: 1vh; }
@@ -296,11 +297,11 @@ img.post-metric-symbol { opacity: .9; filter: grayscale(1) sepia(.32) brightness
 .leader-feature > i, .leader-support-row > i { width: 3px; height: 78%; background: var(--pm-blue); }
 .leader--red > i { background: var(--pm-red); }
 .leader-feature-copy { min-width: 0; display: grid; align-content: center; justify-items: start; }
-.leader-feature-copy > span, .leader-support-row span { color: var(--pm-blue); font: 760 clamp(8px, .74vw, 14px)/1 "Anybody"; letter-spacing: .08em; }
+.leader-feature-copy > span, .leader-support-row span { color: var(--pm-blue); font: 760 clamp(8px, .74vw, 14px)/1 "Lens Grotesk", "Be Vietnam Pro", sans-serif; letter-spacing: .08em; }
 .leader--red .leader-feature-copy > span, .leader-support-row.leader--red span { color: var(--pm-red); }
-.leader-feature-copy strong { margin-top: .7vh; color: #f0ede4; font: 850 clamp(42px, 4vw, 77px)/.78 "Anybody"; font-stretch: 118%; font-variant-numeric: tabular-nums; letter-spacing: -.045em; }
-.leader-feature-copy b { color: #f0ede4; font: 830 clamp(17px, 1.8vw, 35px)/.85 "Anybody"; font-stretch: 116%; letter-spacing: .02em; }
-.leader-feature-copy small { margin-top: 1.2vh; color: var(--pm-blue); font: 750 clamp(7px, .67vw, 13px)/1 "Anybody"; letter-spacing: .075em; }
+.leader-feature-copy strong { margin-top: .7vh; color: #f0ede4; font: 850 clamp(42px, 4vw, 77px)/.78 "Lens Grotesk", "Be Vietnam Pro", sans-serif; font-stretch: 118%; font-variant-numeric: tabular-nums; letter-spacing: -.045em; }
+.leader-feature-copy b { color: #f0ede4; font: 830 clamp(17px, 1.8vw, 35px)/.85 "Lens Grotesk", "Be Vietnam Pro", sans-serif; font-stretch: 116%; letter-spacing: .02em; }
+.leader-feature-copy small { margin-top: 1.2vh; color: var(--pm-blue); font: 750 clamp(7px, .67vw, 13px)/1 "Lens Grotesk", "Be Vietnam Pro", sans-serif; letter-spacing: .075em; }
 .leader--red .leader-feature-copy small { color: var(--pm-red); }
 .leader-support { min-width: 0; display: grid; grid-template-rows: 1fr 1fr; padding-left: 1vw; }
 .leader-support-row { min-width: 0; display: grid; grid-template-columns: 4.5vw 3px minmax(0, 1fr); align-items: center; gap: .8vw; }
@@ -308,10 +309,10 @@ img.post-metric-symbol { opacity: .9; filter: grayscale(1) sepia(.32) brightness
 .leader-support-row img { width: 4.5vw; height: 4.5vw; max-width: 9.2vh; max-height: 9.2vh; object-fit: cover; border: 1px solid #3a3e40; filter: saturate(.9); }
 .leader-support-row > i { height: 70%; }
 .leader-support-row > div { min-width: 0; display: grid; gap: .65vh; }
-.leader-support-row strong { color: #f0ede4; font: 840 clamp(24px, 2.55vw, 49px)/.88 "Anybody"; font-stretch: 116%; font-variant-numeric: tabular-nums; letter-spacing: -.035em; white-space: nowrap; }
+.leader-support-row strong { color: #f0ede4; font: 840 clamp(24px, 2.55vw, 49px)/.88 "Lens Grotesk", "Be Vietnam Pro", sans-serif; font-stretch: 116%; font-variant-numeric: tabular-nums; letter-spacing: -.035em; white-space: nowrap; }
 
 /* Post-match workspace */
-.review-badge { display: flex; align-items: center; gap: 8px; padding: 9px 12px; color: #969b9d; border: 1px solid #3a3f41; font: 700 10px/1 "Anybody"; letter-spacing: .11em; }
+.review-badge { display: flex; align-items: center; gap: 8px; padding: 9px 12px; color: #969b9d; border: 1px solid #3a3f41; font: 700 10px/1 "Lens Grotesk", "Be Vietnam Pro", sans-serif; letter-spacing: .11em; }
 .review-badge i { width: 7px; height: 7px; background: #73797b; }
 .review-badge--review { color: #d7c492; border-color: #695d43; }
 .review-badge--review i { background: var(--brass); }
@@ -319,23 +320,23 @@ img.post-metric-symbol { opacity: .9; filter: grayscale(1) sepia(.32) brightness
 .review-badge--ready i, .review-badge--live i { background: #75a27d; }
 .post-status-strip { min-height: 70px; display: grid; grid-template-columns: minmax(220px, 1.25fr) .65fr .65fr auto auto; align-items: stretch; margin-bottom: 14px; background: #151719; border: 1px solid #303437; }
 .post-status-strip > div, .match-id-field { display: grid; align-content: center; gap: 6px; padding: 0 17px; border-right: 1px solid #303437; }
-.post-status-strip span { color: #666c6e; font: 650 8px/1 "Anybody"; letter-spacing: .14em; }
-.post-status-strip strong { color: #c5c3bc; font: 700 11px/1 "Anybody"; letter-spacing: .055em; }
-.match-id-field input { min-height: 30px; padding: 0 8px; color: #d4d2cb; background: #101214; border: 1px solid #353a3d; font: 700 11px/1 "Be Vietnam Pro"; letter-spacing: .025em; }
+.post-status-strip span { color: #666c6e; font: 650 8px/1 "Lens Grotesk", "Be Vietnam Pro", sans-serif; letter-spacing: .14em; }
+.post-status-strip strong { color: #c5c3bc; font: 700 11px/1 "Lens Grotesk", "Be Vietnam Pro", sans-serif; letter-spacing: .055em; }
+.match-id-field input { min-height: 30px; padding: 0 8px; color: #d4d2cb; background: #101214; border: 1px solid #353a3d; font: 700 11px/1 "Lens Grotesk", "Be Vietnam Pro"; letter-spacing: .025em; }
 .match-id-field input:focus { border-color: #8e7a4e; outline: 1px solid #8e7a4e; }
-.post-status-strip button, .empty-review button { min-width: 176px; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 0 18px; color: #151718; background: var(--brass); border: 0; cursor: pointer; font: 750 9px/1 "Anybody"; letter-spacing: .08em; }
+.post-status-strip button, .empty-review button { min-width: 176px; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 0 18px; color: #151718; background: var(--brass); border: 0; cursor: pointer; font: 750 9px/1 "Lens Grotesk", "Be Vietnam Pro", sans-serif; letter-spacing: .08em; }
 .post-status-strip .fixture-action { min-width: 116px; color: #b9b7b0; background: #1b1e20; border-left: 1px solid #303437; }
 .post-status-strip button:disabled { cursor: wait; opacity: .72; }
 .warning-banner { margin-bottom: 14px; display: flex; align-items: center; gap: 8px; padding: 10px 13px; color: #c6b784; background: #282418; border-left: 2px solid var(--brass); font-size: 11px; }
 .post-preview-panel { margin-bottom: 16px; }
 .panel-title { min-height: 64px; display: flex; align-items: center; justify-content: space-between; padding: 13px 16px; border-bottom: 1px solid #303437; }
-.panel-title h2 { margin: 5px 0 0; font: 740 19px/1 "Anybody"; font-stretch: 116%; }
-.panel-title a { display: flex; align-items: center; gap: 6px; color: #b7b2a6; text-decoration: none; font: 690 9px/1 "Anybody"; letter-spacing: .08em; }
+.panel-title h2 { margin: 5px 0 0; font: 740 19px/1 "Lens Grotesk", "Be Vietnam Pro", sans-serif; font-stretch: 116%; }
+.panel-title a { display: flex; align-items: center; gap: 6px; color: #b7b2a6; text-decoration: none; font: 690 9px/1 "Lens Grotesk", "Be Vietnam Pro", sans-serif; letter-spacing: .08em; }
 .post-preview-frame { max-width: 960px; aspect-ratio: 16/9; margin: 18px auto; overflow: hidden; background: #0b0c0d; border: 1px solid #3b3f41; }
 .post-preview-frame iframe { width: 200%; height: 200%; border: 0; transform: scale(.5); transform-origin: top left; }
 .empty-review { min-height: 300px; display: grid; place-items: center; align-content: center; gap: 11px; text-align: center; }
 .empty-review > svg { color: var(--brass); font-size: 34px; }
-.empty-review h2 { margin: 0; font: 730 22px/1 "Anybody"; }
+.empty-review h2 { margin: 0; font: 730 22px/1 "Lens Grotesk", "Be Vietnam Pro", sans-serif; }
 .empty-review p { margin: 0 0 10px; color: #7e8486; font-size: 12px; }
 .empty-review button { min-height: 42px; }
 .post-editor { display: grid; gap: 16px; }
@@ -343,7 +344,7 @@ img.post-metric-symbol { opacity: .9; filter: grayscale(1) sepia(.32) brightness
 .result-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 16px; }
 .field-with-source { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: end; }
 .field-with-source .source-tag { min-height: 38px; }
-.source-tag { padding: 4px 6px; color: #879a8a; background: #1c241e; border: 1px solid #35463a; font: 650 7px/1 "Anybody"; letter-spacing: .08em; }
+.source-tag { padding: 4px 6px; color: #879a8a; background: #1c241e; border: 1px solid #35463a; font: 650 7px/1 "Lens Grotesk", "Be Vietnam Pro", sans-serif; letter-spacing: .08em; }
 .source-tag.is-manual { color: #d4bd83; background: #2b261a; border-color: #5c4f31; }
 button.source-tag { cursor: pointer; }
 .post-team-editors { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
@@ -351,13 +352,13 @@ button.source-tag { cursor: pointer; }
 .post-team-editor--red { border-top-color: var(--red); }
 .metric-input-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: #303437; border-bottom: 1px solid #303437; }
 .metric-input { min-width: 0; display: grid; gap: 6px; padding: 12px 9px; background: #17191b; }
-.metric-input > span:first-child { overflow: hidden; color: #777d80; font: 650 8px/1 "Anybody"; letter-spacing: .06em; text-overflow: ellipsis; white-space: nowrap; }
+.metric-input > span:first-child { overflow: hidden; color: #777d80; font: 650 8px/1 "Lens Grotesk", "Be Vietnam Pro", sans-serif; letter-spacing: .06em; text-overflow: ellipsis; white-space: nowrap; }
 .metric-input input { padding: 0 7px; font-weight: 700; }
 .metric-input .source-tag { justify-self: start; }
-.subhead { color: #686e70; font: 680 8px/1 "Anybody"; letter-spacing: .12em; }
+.subhead { color: #686e70; font: 680 8px/1 "Lens Grotesk", "Be Vietnam Pro", sans-serif; letter-spacing: .12em; }
 .player-stat-table { padding: 13px 16px 16px; }
 .player-stat-head, .player-stat-row { display: grid; grid-template-columns: minmax(116px, 1fr) repeat(5, minmax(68px, .72fr)); gap: 7px; align-items: center; }
-.player-stat-head { min-height: 26px; color: #686e70; font: 680 7px/1 "Anybody"; letter-spacing: .08em; text-align: center; }
+.player-stat-head { min-height: 26px; color: #686e70; font: 680 7px/1 "Lens Grotesk", "Be Vietnam Pro", sans-serif; letter-spacing: .08em; text-align: center; }
 .player-stat-head span:first-child { text-align: left; }
 .player-stat-row { min-height: 52px; border-bottom: 1px solid #292d2f; }
 .player-stat-id { min-width: 0; display: grid; grid-template-columns: 30px minmax(0, 1fr); align-items: center; gap: 8px; }
@@ -368,9 +369,9 @@ button.source-tag { cursor: pointer; }
 .player-stat-row .source-tag { min-height: 15px; overflow: hidden; padding: 2px 3px; font-size: 6px; text-overflow: ellipsis; white-space: nowrap; }
 .post-publish-bar { position: fixed; z-index: 35; inset: auto 0 0; min-height: 72px; display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 12px 28px; background: #0c0e0f; border-top: 1px solid #3b3f41; }
 .post-publish-bar > div { margin-right: auto; display: grid; gap: 4px; }
-.post-publish-bar > div span { color: #c4b27f; font: 700 9px/1 "Anybody"; letter-spacing: .1em; }
+.post-publish-bar > div span { color: #c4b27f; font: 700 9px/1 "Lens Grotesk", "Be Vietnam Pro", sans-serif; letter-spacing: .1em; }
 .post-publish-bar > div small { color: #686e70; font-size: 9px; }
-.post-publish-bar button { min-height: 42px; padding: 0 17px; color: #aaaeb0; background: #191b1d; border: 1px solid #3b4042; cursor: pointer; font: 700 9px/1 "Anybody"; letter-spacing: .08em; }
+.post-publish-bar button { min-height: 42px; padding: 0 17px; color: #aaaeb0; background: #191b1d; border: 1px solid #3b4042; cursor: pointer; font: 700 9px/1 "Lens Grotesk", "Be Vietnam Pro", sans-serif; letter-spacing: .08em; }
 .post-publish-bar button:disabled { cursor: not-allowed; opacity: .42; }
 .post-publish-bar .approve-action, .post-publish-bar .publish-action { min-width: 168px; display: flex; align-items: center; justify-content: center; gap: 8px; color: #111315; background: var(--brass); border-color: var(--brass); }
 .post-publish-bar .publish-action { color: #e1eee3; background: #26332a; border-color: #5e7c65; }

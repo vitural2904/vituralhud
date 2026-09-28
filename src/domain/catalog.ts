@@ -2,11 +2,12 @@ import championData from "./champion-data.json";
 import type { Champion } from "./types";
 
 export const championAssetVersion = championData.version;
+const assetRoot = (championData as { assetRoot?: string }).assetRoot ?? '/champions';
 
 export const champions: Champion[] = championData.champions.map((item) => ({
   ...item,
-  iconUrl: `/champions/icons/${item.id}.png`,
-  loadingUrl: `/champions/loading/${item.id}.jpg`,
+  iconUrl: `${assetRoot}/icons/${item.id}.png`,
+  loadingUrl: `${assetRoot}/loading/${item.id}.jpg`,
 }));
 
 export const championById: Record<string, Champion> = Object.fromEntries(

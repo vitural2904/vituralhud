@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { collectMatchV5Warnings, fetchMatchV5, normalizeMatchV5, regionalRouteForMatch } from "./match-v5";
+import { collectMatchV5MissingFields, collectMatchV5Warnings, fetchMatchV5, normalizeMatchV5, regionalRouteForMatch } from "./match-v5";
 
 describe("Match-V5 normalizer", () => {
+  it('F17 maps numeric Wukong and case-insensitive champion names; flags unknown duration', () => {
+    const match = { info: { gameDuration: 900000, participants: [{ teamId: 100, championId: 62, championName: 'Wukong' }, { teamId: 200, championName: 'annie' }], teams: [{ teamId: 100, win: true }, { teamId: 200, win: false }] } };
+    const data = normalizeMatchV5(match); expect(data.teams.blue.players[0].championId).toBe('MonkeyKing'); expect(data.teams.red.players[0].championId).toBe('Annie');
+    expect(data.durationSeconds).toBe(0); expect(collectMatchV5MissingFields(match)).toContain('durationSeconds');
+  });
   it("builds the broadcast model and derives team gold", () => {
     const participants = Array.from({ length: 10 }, (_, index) => ({
       participantId: index + 1,
@@ -45,6 +50,7 @@ describe("Match-V5 normalizer", () => {
   it("falls back to Rift Herald for older objective contracts", () => {
     const data = normalizeMatchV5({ info: {
       gameDuration: 900_000,
+      gameVersion: '11.19.1',
       participants: [{ participantId: 1, teamId: 100 }, { participantId: 6, teamId: 200 }],
       teams: [
         { teamId: 100, win: false, objectives: { tower: { kills: 0 }, riftHerald: { kills: 1 } } },
@@ -115,7 +121,7 @@ describe("Match-V5 normalizer", () => {
     const warnings = collectMatchV5Warnings(match);
     const data = normalizeMatchV5(match);
 
-    expect(warnings.some((warning) => warning.includes("Đã đặt 0–0"))).toBe(true);
+    expect(warnings.some((warning) => warning.includes("xác nhận số 0"))).toBe(true);
     expect(warnings.some((warning) => warning.includes("damage mục tiêu"))).toBe(true);
     expect(data.teams.blue.dragons).toBe(0);
     expect(data.teams.red.barons).toBe(0);

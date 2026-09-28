@@ -4,7 +4,7 @@ import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import type { DraftFeedSnapshot } from "../src/domain/types";
 import { createInitialState } from "../src/domain/state";
-import { StateManager } from "./state-manager";
+import { StateManager, migrateSavedState } from "./state-manager";
 
 const tempDirs: string[] = [];
 
@@ -13,6 +13,15 @@ afterEach(async () => {
 });
 
 describe("StateManager revision", () => {
+  it('marks new missing legacy metrics as unknown instead of confirmed zeros', () => {
+    const legacy = createInitialState() as any;
+    delete legacy.schemaVersion; legacy.postMatch.status = 'review';
+    delete legacy.postMatch.missingFields; delete legacy.postMatch.baselineMissingFields;
+    delete legacy.postMatch.data.teams.blue.inhibitors;
+    delete legacy.postMatch.baseline.teams.blue.inhibitors;
+    expect(migrateSavedState(legacy).postMatch.missingFields).toContain('teams.blue.inhibitors');
+    expect(migrateSavedState(legacy).postMatch.baselineMissingFields).toContain('teams.blue.inhibitors');
+  });
   it("stays strictly monotonic across undo and redo", async () => {
     const dir = await mkdtemp(path.join(os.tmpdir(), "virtualhud-state-"));
     tempDirs.push(dir);
@@ -75,7 +84,8 @@ describe("StateManager revision", () => {
         red: { picks: [], bans: [] },
       },
     });
-    expect(state.revision).toBe(before.revision);
+    expect(state.revision).toBeGreaterThan(before.revision);
+    expect(state.lcu.connected).toBe(true);
     expect(state.draft.phase).toBe(before.draft.phase);
   });
 
@@ -85,12 +95,15 @@ describe("StateManager revision", () => {
     const manager = new StateManager(dir);
     await manager.init();
 
-    const visible = await manager.setLcuStatus({
+    const unresolved = await manager.setLcuStatus({
       connected: true,
       message: "Đang đọc champ select",
       feed: "champ-select",
       gameflowPhase: "ChampSelect",
     });
+    expect(unresolved.activeOutput).toBe('none');
+    await manager.dispatch({ type: 'RESUME_AUTO_OUTPUT' });
+    const visible = await manager.ingestDraftFeed({ feedId: 'real-session', observedAt: new Date().toISOString(), phase: 'pick-1', timerMs: 30000, timerRunning: true, teams: { blue: { picks: Array.from({length: 5}, () => ({ championId: null, locked: false })), bans: Array(5).fill(null) }, red: { picks: Array.from({length: 5}, () => ({ championId: null, locked: false })), bans: Array(5).fill(null) } } });
     const hidden = await manager.setLcuStatus({
       connected: true,
       message: "League Client: Lobby",
@@ -171,13 +184,14 @@ describe("StateManager revision", () => {
     expect(state.match.teams.blue.name).toBe("T1");
     expect(state.match.teams.blue.players[0]).toBe("vitural");
     expect(state.draft.teams.blue.picks[0].championId).toBe("Ashe");
-    expect(state.activeOutput).toBe("draft");
+    expect(state.activeOutput).toBe("none");
   });
 
   it("adds new overview fields to an existing nested snapshot", async () => {
     const dir = await mkdtemp(path.join(os.tmpdir(), "virtualhud-post-migrate-"));
     tempDirs.push(dir);
     const legacy = createInitialState() as any;
+    delete legacy.schemaVersion;
     delete legacy.postMatch.data.earlyObjective;
     delete legacy.postMatch.data.teams.blue.inhibitors;
     delete legacy.postMatch.data.teams.blue.voidGrubs;

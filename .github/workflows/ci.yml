@@ -18,4 +18,20 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run check
+      - run: npm audit --audit-level=moderate
+      - run: npm run test:coverage
+      - run: npx playwright install chromium
+        env:
+          PLAYWRIGHT_BROWSERS_PATH: .codex-local/ms-playwright
+      - run: npm run test:browser
+        env:
+          PLAYWRIGHT_BROWSERS_PATH: .codex-local/ms-playwright
+      - run: npm run test:stress
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: regression-results
+          path: |
+            test-results
+            coverage/coverage-summary.json
 

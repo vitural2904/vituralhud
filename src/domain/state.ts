@@ -8,221 +8,98 @@ import type {
   PostMatchPlayerMetric,
   Side,
 } from "./types";
+import { approvalErrors, DomainError, postFields, validateCommand } from './validation';
 
-const players = ["Kiên", "RonOP", "Hữu Trung", "Phước", "Tốc"];
-const bluePicks = ["Ziggs", "Ryze", "LeeSin", "Camille", "JarvanIV"];
-const redPicks = ["Syndra", "Lulu", "Olaf", "Ashe", "Thresh"];
-
-const makeMatchTeam = (side: Side, code: string, name: string, color: string, logoUrl: string): MatchTeamState => ({
-  side,
-  code,
-  name,
-  score: 0,
-  color,
-  logoUrl,
-  players: [...players],
-});
-
-export function createPostMatchData(state?: Pick<BroadcastState, "match" | "draft">): PostMatchData {
-  const picks = state
-    ? { blue: state.draft.teams.blue.picks, red: state.draft.teams.red.picks }
-    : {
-        blue: bluePicks.map((championId) => ({ championId, locked: true })),
-        red: redPicks.map((championId) => ({ championId, locked: true })),
-      };
-  const names = state
-    ? { blue: state.match.teams.blue.players, red: state.match.teams.red.players }
-    : { blue: players, red: players };
-  const blueDamage = [28_100, 12_100, 21_000, 23_500, 31_100];
-  const redDamage = [8_100, 5_700, 16_100, 22_600, 3_100];
-  const bluePlayerStats = [
-    { kills: 12, assists: 5, largestKillingSpree: 8, damageToObjectives: 6_200 },
-    { kills: 1, assists: 18, largestKillingSpree: 1, damageToObjectives: 2_500 },
-    { kills: 3, assists: 11, largestKillingSpree: 3, damageToObjectives: 24_600 },
-    { kills: 2, assists: 8, largestKillingSpree: 2, damageToObjectives: 15_000 },
-    { kills: 0, assists: 15, largestKillingSpree: 0, damageToObjectives: 12_000 },
-  ];
-  const redPlayerStats = [
-    { kills: 2, assists: 4, largestKillingSpree: 2, damageToObjectives: 5_100 },
-    { kills: 1, assists: 5, largestKillingSpree: 1, damageToObjectives: 31_400 },
-    { kills: 1, assists: 3, largestKillingSpree: 1, damageToObjectives: 14_000 },
-    { kills: 2, assists: 2, largestKillingSpree: 2, damageToObjectives: 10_800 },
-    { kills: 0, assists: 6, largestKillingSpree: 0, damageToObjectives: 3_600 },
-  ];
-
-  return {
-    winner: "blue",
-    durationSeconds: 33 * 60 + 6,
-    earlyObjective: "voidGrubs",
-    teams: {
-      blue: {
-        kills: 18,
-        gold: 70_500,
-        towers: 9,
-        dragons: 4,
-        barons: 2,
-        inhibitors: 2,
-        voidGrubs: 5,
-        riftHeralds: 0,
-        players: picks.blue.map((pick, index) => ({
-          player: names.blue[index] || players[index],
-          championId: pick.championId ?? bluePicks[index],
-          damageToChampions: blueDamage[index],
-          ...bluePlayerStats[index],
-        })),
-      },
-      red: {
-        kills: 6,
-        gold: 59_600,
-        towers: 2,
-        dragons: 0,
-        barons: 0,
-        inhibitors: 0,
-        voidGrubs: 1,
-        riftHeralds: 0,
-        players: picks.red.map((pick, index) => ({
-          player: names.red[index] || players[index],
-          championId: pick.championId ?? redPicks[index],
-          damageToChampions: redDamage[index],
-          ...redPlayerStats[index],
-        })),
-      },
-    },
-  };
-}
-
-export function createEmptyPostMatchData(state?: Pick<BroadcastState, "match" | "draft">): PostMatchData {
-  const empty = createPostMatchData(state);
-  empty.durationSeconds = 0;
-  for (const side of ["blue", "red"] as Side[]) {
-    for (const metric of ["kills", "gold", "towers", "dragons", "barons", "inhibitors", "voidGrubs", "riftHeralds"] as PostMatchMetric[]) {
-      empty.teams[side][metric] = 0;
-    }
-    for (const player of empty.teams[side].players) {
-      player.damageToChampions = 0;
-      player.kills = 0;
-      player.assists = 0;
-      player.largestKillingSpree = 0;
-      player.damageToObjectives = 0;
-    }
-  }
-  return empty;
-}
-
-export function createInitialState(): BroadcastState {
-  const draft = {
-    phase: "pick-2" as DraftPhase,
-    timerMs: 27_000,
-    timerRunning: false,
-    activeSide: "blue" as Side,
-    autoSync: true,
-    manualOverride: false,
-    teams: {
-      blue: {
-        picks: bluePicks.map((championId, index) => ({ championId, locked: index < 3 })),
-        bans: ["Aatrox", "Khazix", "Xayah", "Fiora", "Leblanc"],
-      },
-      red: {
-        picks: redPicks.map((championId, index) => ({ championId, locked: index < 3 })),
-        bans: ["Renekton", "Sejuani", "Varus", "Nautilus", "Rumble"],
-      },
-    },
-  };
-  const match = {
-    matchName: "VCS SHOWMATCH",
-    gameLabel: "GAME 1",
-    patch: "16.16.1",
-    bestOf: 3 as const,
-    teams: {
-      blue: makeMatchTeam("blue", "RDT", "RED DOT", "#4f91d8", "/teams/red-dot.png"),
-      red: makeMatchTeam("red", "WSG", "WHITE SUGAR", "#c84b42", "/teams/white-sugar.png"),
-    },
-  };
-  const seed = { match, draft } as Pick<BroadcastState, "match" | "draft">;
-  const postMatch = createEmptyPostMatchData(seed);
-
-  return {
-    revision: 1,
-    source: "mock",
-    lifecycle: "idle",
-    activeOutput: "none",
-    match,
-    draft,
-    postMatch: {
-      status: "waiting",
-      matchId: "",
-      source: "fixture",
-      baselineSource: "fixture",
-      lastSyncedAt: null,
-      confidence: "unverified",
-      baselineConfidence: "unverified",
-      baseline: structuredClone(postMatch),
-      data: structuredClone(postMatch),
-      overrideFields: [],
-      warnings: [],
-    },
-    lcu: {
-      connected: false,
-      message: "Chưa thấy League Client",
-      lastSeenAt: null,
-      feed: "offline",
-      gameflowPhase: null,
-      sessionKind: "unknown",
-      sessionId: null,
-      lastPayloadAt: null,
-      warnings: [],
-    },
-    events: [],
-  };
-}
-
+import { createInitialState, createPostMatchData, createEmptyPostMatchData, players, bluePicks, redPicks } from './initial-state';
+export { createInitialState, createPostMatchData, createEmptyPostMatchData } from './initial-state';
 const phases: DraftPhase[] = ["waiting", "ban-1", "pick-1", "ban-2", "pick-2", "complete"];
 
 export function commandLabel(command: BroadcastCommand): string {
   const labels: Record<BroadcastCommand["type"], string> = {
-    SET_MATCH: "Cập nhật trận đấu",
-    SET_TEAM: "Cập nhật đội",
-    SET_SCORE: "Cập nhật tỉ số",
-    SET_BEST_OF: "Cập nhật thể thức",
-    SET_PLAYER: "Cập nhật tuyển thủ",
-    SET_PICK: "Cập nhật lượt chọn",
-    SET_BAN: "Cập nhật lượt cấm",
-    SET_PHASE: "Đổi giai đoạn draft",
-    SET_TIMER: "Đặt đồng hồ",
-    TOGGLE_TIMER: "Bật/tạm dừng đồng hồ",
-    SET_AUTO_SYNC: "Đổi tự đồng bộ",
-    SET_OVERRIDE: "Đổi manual override",
-    SET_OVERLAY_VISIBLE: "Chuyển trạng thái draft overlay",
-    SET_OUTPUT: "Chuyển màn hình phát sóng",
-    POST_MATCH_BEGIN_FETCH: "Bắt đầu lấy dữ liệu post-match",
-    POST_MATCH_LOAD_FIXTURE: "Nạp dữ liệu post-match mẫu",
-    POST_MATCH_SET_WINNER: "Sửa đội thắng",
-    POST_MATCH_SET_DURATION: "Sửa thời lượng trận",
-    POST_MATCH_SET_EARLY_OBJECTIVE: "Đổi mục tiêu đầu trận",
-    POST_MATCH_SET_METRIC: "Sửa chỉ số đội",
-    POST_MATCH_SET_PLAYER_METRIC: "Sửa chỉ số tuyển thủ",
-    POST_MATCH_RESET_FIELD: "Khôi phục một trường post-match",
-    POST_MATCH_RESET_OVERRIDES: "Khôi phục dữ liệu post-match",
-    POST_MATCH_SET_READY: "Đổi trạng thái duyệt post-match",
-    POST_MATCH_RESET: "Đặt lại post-match",
-    RUN_DEMO_STEP: "Chạy bước demo",
-    UNDO: "Hoàn tác",
-    REDO: "Làm lại",
-    RESET: "Đặt lại broadcast",
+    SET_MATCH: "Match updated",
+    SET_TEAM: "Team updated",
+    SET_SCORE: "Score updated",
+    SET_BEST_OF: "Series format updated",
+    SET_PLAYER: "Player updated",
+    SET_PICK: "Pick updated",
+    SET_BAN: "Ban updated",
+    SET_PHASE: "Draft phase changed",
+    SET_TIMER: "Timer set",
+    TOGGLE_TIMER: "Timer toggled",
+    SET_AUTO_SYNC: "Auto sync changed",
+    SET_OVERRIDE: "Manual control changed",
+    SET_OVERLAY_VISIBLE: "Draft output changed",
+    SET_OUTPUT: "Program output changed",
+    RESUME_AUTO_OUTPUT: 'LCU output enabled',
+    POST_MATCH_CREATE_MANUAL: 'Blank post-match created',
+    POST_MATCH_SET_PLAYER_IDENTITY: 'Post-match player updated',
+    POST_MATCH_CONFIRM_ZERO: 'Missing numbers confirmed as zero',
+    POST_MATCH_BEGIN_FETCH: "Post-match fetch started",
+    POST_MATCH_LOAD_FIXTURE: "Post-match fixture loaded",
+    POST_MATCH_SET_WINNER: "Winner changed",
+    POST_MATCH_SET_DURATION: "Match duration changed",
+    POST_MATCH_SET_EARLY_OBJECTIVE: "Early objective changed",
+    POST_MATCH_SET_METRIC: "Team metric changed",
+    POST_MATCH_SET_PLAYER_METRIC: "Player metric changed",
+    POST_MATCH_RESET_FIELD: "Field reset to source",
+    POST_MATCH_RESET_OVERRIDES: "Post-match data reset",
+    POST_MATCH_SET_READY: "Review status changed",
+    POST_MATCH_RESET: "Post-match reset",
+    RUN_DEMO_STEP: "Demo advanced",
+    UNDO: "Change undone",
+    REDO: "Change redone",
+    RESET: "Broadcast reset",
   };
   return labels[command.type];
 }
 
 const addOverride = (state: BroadcastState, field: string) => {
+  state.postMatch.missingFields = state.postMatch.missingFields.filter(item => item !== field);
   if (!state.postMatch.overrideFields.includes(field)) state.postMatch.overrideFields.push(field);
   state.postMatch.source = "manual";
   state.postMatch.confidence = "unverified";
   if (state.postMatch.status !== "fetching" && state.postMatch.status !== "waiting") state.postMatch.status = "review";
   if (state.activeOutput === "post-match") state.activeOutput = "none";
+  state.outputOwner = 'operator';
+};
+
+export function reconcileOutput(state: BroadcastState) {
+  if (state.outputOwner === 'lcu') {
+    state.activeOutput = state.draft.autoSync && !state.draft.manualOverride && state.lcu.connected
+      && state.lcu.feed === 'champ-select' && Boolean(state.lcu.sessionId && state.lcu.lastPayloadAt)
+      && !['waiting', 'complete'].includes(state.draft.phase) ? 'draft' : 'none';
+  }
+  if (state.activeOutput !== 'post-match' && state.postMatch.status === 'live') state.postMatch.status = 'ready';
+  if (state.activeOutput === 'post-match') state.lifecycle = 'post-match';
+  else if (state.activeOutput === 'draft') state.lifecycle = 'draft';
+  else if (state.postMatch.status !== 'waiting') state.lifecycle = 'post-match';
+  else state.lifecycle = state.draft.phase === 'complete' ? 'in-game' : 'idle';
+}
+
+const fieldValue = (data: PostMatchData, field: string): unknown => field.split('.').reduce<unknown>((value, key) => (value as Record<string, unknown>)[key], data);
+const assignField = (data: PostMatchData, field: string, value: unknown) => {
+  const keys = field.split('.');
+  const leaf = keys.pop()!;
+  const parent = keys.reduce<unknown>((current, key) => (current as Record<string, unknown>)[key], data) as Record<string, unknown>;
+  parent[leaf] = value;
 };
 
 export function reduceDraft(state: BroadcastState, command: BroadcastCommand): BroadcastState {
+  validateCommand(command);
   const next = structuredClone(state);
+  const edit = (() => {
+    switch (command.type) {
+      case 'POST_MATCH_SET_WINNER': return ['winner', command.side] as const;
+      case 'POST_MATCH_SET_DURATION': return ['durationSeconds', command.seconds] as const;
+      case 'POST_MATCH_SET_EARLY_OBJECTIVE': return ['earlyObjective', command.objective] as const;
+      case 'POST_MATCH_SET_METRIC': return [`teams.${command.side}.${command.field}`, command.value] as const;
+      case 'POST_MATCH_SET_PLAYER_METRIC': return [`teams.${command.side}.players.${command.index}.${command.field}`, command.value] as const;
+      case 'POST_MATCH_SET_PLAYER_IDENTITY': return [`teams.${command.side}.players.${command.index}.${command.field}`, command.value] as const;
+      default: return null;
+    }
+  })();
+  if (edit && fieldValue(state.postMatch.data, edit[0]) === edit[1] && !state.postMatch.missingFields.includes(edit[0])) return state;
+  if (edit && ['waiting', 'fetching'].includes(state.postMatch.status)) throw new DomainError('NOT_EDITABLE', 'Tạo báo cáo hoặc hủy request trước khi sửa.');
   if (command.type === "SET_MATCH") next.match[command.field] = command.value.slice(0, 40) as never;
   if (command.type === "SET_TEAM") {
     const limit = command.field === "logoUrl" ? 240 : 28;
@@ -230,6 +107,7 @@ export function reduceDraft(state: BroadcastState, command: BroadcastCommand): B
   }
   if (command.type === "SET_SCORE") {
     const winsNeeded = Math.ceil(next.match.bestOf / 2);
+    if (command.value > winsNeeded) throw new DomainError('INVALID_SCORE', 'Tỉ số vượt best-of.', ['value'], 400);
     next.match.teams[command.side].score = Math.max(0, Math.min(winsNeeded, command.value));
   }
   if (command.type === "SET_BEST_OF") {
@@ -257,16 +135,19 @@ export function reduceDraft(state: BroadcastState, command: BroadcastCommand): B
   if (command.type === "SET_OVERRIDE") {
     next.draft.manualOverride = command.value;
     next.source = command.value ? "manual" : next.lcu.connected ? "lcu" : "mock";
-    if (!command.value) next.activeOutput = next.lcu.feed === "champ-select" || next.lcu.feed === "unresolved" ? "draft" : "none";
   }
-  if (command.type === "SET_OVERLAY_VISIBLE" && next.draft.manualOverride) next.activeOutput = command.value ? "draft" : "none";
+  if (command.type === "SET_OVERLAY_VISIBLE" && next.draft.manualOverride) { next.outputOwner = 'operator'; next.activeOutput = command.value ? "draft" : "none"; }
+  if (command.type === 'RESUME_AUTO_OUTPUT') { next.outputOwner = 'lcu'; next.draft.manualOverride = false; next.draft.autoSync = true; }
   if (command.type === "SET_OUTPUT") {
-    if (command.output === "post-match" && !["ready", "live"].includes(next.postMatch.status)) return state;
+    if (command.output === "post-match" && !["ready", "live"].includes(next.postMatch.status)) throw new DomainError('NOT_READY', 'Duyệt dữ liệu trước khi phát.');
+    if (command.output === 'post-match' && approvalErrors(next).length) throw new DomainError('REVIEW_REQUIRED', 'Dữ liệu cần kiểm tra.', approvalErrors(next));
+    next.outputOwner = 'operator';
     next.activeOutput = command.output;
     if (command.output === "post-match") next.postMatch.status = "live";
     if (command.output !== "post-match" && next.postMatch.status === "live") next.postMatch.status = "ready";
   }
   if (command.type === "POST_MATCH_BEGIN_FETCH") {
+    next.outputOwner = 'operator';
     next.lifecycle = "post-match";
     next.activeOutput = "none";
     next.postMatch.status = "fetching";
@@ -276,6 +157,7 @@ export function reduceDraft(state: BroadcastState, command: BroadcastCommand): B
     const data = createPostMatchData(next);
     next.lifecycle = "post-match";
     next.activeOutput = "none";
+    next.outputOwner = 'operator';
     next.postMatch = {
       status: "review",
       matchId: `VN2-DEMO-${Date.now().toString().slice(-6)}`,
@@ -287,8 +169,26 @@ export function reduceDraft(state: BroadcastState, command: BroadcastCommand): B
       baseline: structuredClone(data),
       data: structuredClone(data),
       overrideFields: [],
-      warnings: ["Dữ liệu fixture. Chưa kết nối Match-V5."],
+      warnings: ["Fixture data. Match-V5 is not connected."],
+      missingFields: [],
+      baselineMissingFields: [],
     };
+  }
+  if (command.type === 'POST_MATCH_CREATE_MANUAL') {
+    const data = createEmptyPostMatchData();
+    next.outputOwner = 'operator'; next.activeOutput = 'none';
+    next.postMatch = { status: 'review', matchId: '', source: 'manual', baselineSource: 'manual', lastSyncedAt: null, confidence: 'unverified', baselineConfidence: 'unverified', baseline: structuredClone(data), data, overrideFields: [], warnings: [], missingFields: [...postFields], baselineMissingFields: [...postFields] };
+  }
+  if (command.type === 'POST_MATCH_SET_PLAYER_IDENTITY') {
+    assignField(next.postMatch.data, `teams.${command.side}.players.${command.index}.${command.field}`, command.value);
+    addOverride(next, `teams.${command.side}.players.${command.index}.${command.field}`);
+  }
+  if (command.type === 'POST_MATCH_CONFIRM_ZERO') {
+    if (state.postMatch.status !== 'review') throw new DomainError('NOT_EDITABLE', 'Chỉ xác nhận số thiếu trong review.');
+    for (const field of command.fields) {
+      if (!next.postMatch.missingFields.includes(field)) continue;
+      assignField(next.postMatch.data, field, 0); addOverride(next, field);
+    }
   }
   if (command.type === "POST_MATCH_SET_WINNER") {
     next.postMatch.data.winner = command.side;
@@ -311,6 +211,9 @@ export function reduceDraft(state: BroadcastState, command: BroadcastCommand): B
     addOverride(next, `teams.${command.side}.players.${command.index}.${command.field}`);
   }
   if (command.type === "POST_MATCH_RESET_FIELD" && next.postMatch.overrideFields.includes(command.field)) {
+    assignField(next.postMatch.data, command.field, fieldValue(next.postMatch.baseline, command.field));
+    next.postMatch.missingFields = next.postMatch.missingFields.filter(field => field !== command.field);
+    if (next.postMatch.baselineMissingFields.includes(command.field)) next.postMatch.missingFields.push(command.field);
     if (command.field === "winner") next.postMatch.data.winner = next.postMatch.baseline.winner;
     if (command.field === "durationSeconds") next.postMatch.data.durationSeconds = next.postMatch.baseline.durationSeconds;
     if (command.field === "earlyObjective") next.postMatch.data.earlyObjective = next.postMatch.baseline.earlyObjective;
@@ -335,6 +238,8 @@ export function reduceDraft(state: BroadcastState, command: BroadcastCommand): B
     next.activeOutput = "none";
   }
   if (command.type === "POST_MATCH_RESET_OVERRIDES") {
+    if (!next.postMatch.overrideFields.length) return state;
+    next.postMatch.missingFields = [...next.postMatch.baselineMissingFields];
     next.postMatch.data = structuredClone(next.postMatch.baseline);
     next.postMatch.overrideFields = [];
     next.postMatch.source = next.postMatch.baselineSource;
@@ -343,7 +248,12 @@ export function reduceDraft(state: BroadcastState, command: BroadcastCommand): B
     next.activeOutput = "none";
   }
   if (command.type === "POST_MATCH_SET_READY") {
-    if (command.value && next.postMatch.status === "review") next.postMatch.status = "ready";
+    if (command.value) {
+      if (!['review', 'ready'].includes(next.postMatch.status)) throw new DomainError('NOT_REVIEWABLE', 'Báo cáo chưa sẵn sàng để duyệt.');
+      const errors = approvalErrors(next);
+      if (errors.length) throw new DomainError('REVIEW_REQUIRED', 'Điền trường thiếu. Kiểm tra kills và spree.', errors);
+      next.postMatch.status = 'ready';
+    }
     if (!command.value && ["ready", "live"].includes(next.postMatch.status)) {
       next.postMatch.status = "review";
       if (next.activeOutput === "post-match") next.activeOutput = "none";
@@ -354,8 +264,8 @@ export function reduceDraft(state: BroadcastState, command: BroadcastCommand): B
     next.postMatch = {
       status: "waiting",
       matchId: "",
-      source: "fixture",
-      baselineSource: "fixture",
+      source: "manual",
+      baselineSource: "manual",
       lastSyncedAt: null,
       confidence: "unverified",
       baselineConfidence: "unverified",
@@ -363,11 +273,18 @@ export function reduceDraft(state: BroadcastState, command: BroadcastCommand): B
       data: structuredClone(data),
       overrideFields: [],
       warnings: [],
+      missingFields: [...postFields],
+      baselineMissingFields: [...postFields],
     };
     if (next.activeOutput === "post-match") next.activeOutput = "none";
     next.lifecycle = "idle";
+    next.outputOwner = 'operator'; next.activeOutput = 'none';
   }
   if (command.type === "RUN_DEMO_STEP") {
+    for (const side of ['blue', 'red'] as const) {
+      next.draft.teams[side].picks = (side === 'blue' ? bluePicks : redPicks).map(championId => ({ championId, locked: true }));
+      next.match.teams[side].players = [...players];
+    }
     const phaseIndex = phases.indexOf(next.draft.phase);
     next.draft.phase = phases[(phaseIndex + 1) % phases.length];
     next.draft.activeSide = next.draft.activeSide === "blue" ? "red" : "blue";
@@ -375,16 +292,13 @@ export function reduceDraft(state: BroadcastState, command: BroadcastCommand): B
     next.draft.timerRunning = next.draft.phase !== "complete";
     next.lifecycle = next.draft.phase === "complete" ? "in-game" : "draft";
   }
-  return next;
+  if (JSON.stringify(next.match) !== JSON.stringify(state.match) && ['ready', 'live'].includes(state.postMatch.status)) {
+    next.postMatch.status = 'review'; next.postMatch.confidence = 'unverified'; next.outputOwner = 'operator';
+    if (next.activeOutput === 'post-match') next.activeOutput = 'none';
+  }
+  reconcileOutput(next);
+  return JSON.stringify(next) === JSON.stringify(state) ? state : next;
 }
 
-export const postMatchMetricLabels: Record<PostMatchMetric, string> = {
-  kills: "Mạng hạ gục",
-  gold: "Tổng vàng",
-  towers: "Trụ",
-  dragons: "Rồng",
-  barons: "Baron",
-  inhibitors: "Nhà lính",
-  voidGrubs: "Sâu hư không",
-  riftHeralds: "Sứ giả khe nứt",
-};
+
+export { postMatchMetricLabels } from './labels';
