@@ -1,4 +1,4 @@
-# VirtualHUD LoL
+# vituralHUD (LOL)
 
 Overlay local cho League of Legends và OBS.
 
