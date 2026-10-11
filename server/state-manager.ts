@@ -296,11 +296,15 @@ export class StateManager {
           }
         }
         this.lcuTimerWindow = timerWindow;
-        next.draft.phase = snapshot.phase;
-        next.draft.timerRunning = snapshot.timerRunning && next.draft.timerMs > 0;
-        if (snapshot.activeSide) next.draft.activeSide = snapshot.activeSide;
+        if (!next.draft.manualOverride) {
+          next.draft.phase = snapshot.phase;
+          next.draft.timerRunning = snapshot.timerRunning && next.draft.timerMs > 0;
+          if (snapshot.activeSide) next.draft.activeSide = snapshot.activeSide;
+        }
         for (const side of ['blue', 'red'] as const) {
-          next.draft.teams[side] = { picks: snapshot.teams[side].picks.map(pick => ({ championId: pick.championId, locked: pick.locked })), bans: [...snapshot.teams[side].bans] };
+          if (!next.draft.manualOverride) {
+            next.draft.teams[side] = { picks: snapshot.teams[side].picks.map(pick => ({ championId: pick.championId, locked: pick.locked })), bans: [...snapshot.teams[side].bans] };
+          }
           snapshot.teams[side].picks.forEach((pick, index) => { if (pick.player !== undefined) next.match.teams[side].players[index] = pick.player.slice(0, 24); });
         }
         next.lcu.feed = 'champ-select'; next.lcu.sessionId = snapshot.feedId; next.lcu.lastPayloadAt = snapshot.observedAt;
@@ -387,3 +391,4 @@ export class StateManager {
     } finally { await unlink(temp).catch(() => undefined); }
   }
 }
+
