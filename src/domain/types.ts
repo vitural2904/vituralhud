@@ -134,6 +134,7 @@ export type DraftFeedTeam = {
 
 export type DraftFeedSnapshot = {
   feedId: string;
+  timerKey?: string;
   observedAt: string;
   phase: DraftPhase;
   timerMs: number;
