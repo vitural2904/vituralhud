@@ -187,6 +187,7 @@ export class StateManager {
   private listeners = new Set<Listener>();
   private queue: Promise<unknown> = Promise.resolve();
   private generation = 0;
+  private lcuTimerWindow: string | undefined;
   private warning: string | null = null;
   readonly instanceId = crypto.randomUUID();
   constructor(private readonly dataDir = path.resolve('data'), private readonly fault?: (stage: StorageStage) => void | Promise<void>) {}
@@ -284,17 +285,33 @@ export class StateManager {
       next.lcu = { ...next.lcu, ...update };
       if (!update.connected) next.lcu = { ...createInitialState().lcu, message: update.message };
       else next.lcu.lastSeenAt = new Date().toISOString();
-      if (snapshot && next.draft.autoSync && !next.draft.manualOverride) {
-        if (next.draft.phase !== snapshot.phase || Math.abs(next.draft.timerMs - snapshot.timerMs) >= 750) next.draft.timerMs = Math.max(0, Math.min(300000, Math.round(snapshot.timerMs)));
-        next.draft.phase = snapshot.phase;
-        next.draft.timerRunning = snapshot.timerRunning && next.draft.timerMs > 0;
-        if (snapshot.activeSide) next.draft.activeSide = snapshot.activeSide;
+      if (snapshot) {
+        const timerWindow = `${snapshot.feedId}:${snapshot.phase}:${snapshot.timerKey ?? ''}`;
+        const timerWindowChanged = this.lcuTimerWindow !== timerWindow;
+        const returningToLcu = !this.state.draft.autoSync || this.state.draft.manualOverride;
+        if (next.draft.autoSync && !next.draft.manualOverride) {
+          const timerDelta = snapshot.timerMs - next.draft.timerMs;
+          if (timerWindowChanged || returningToLcu || timerDelta <= -750) {
+            next.draft.timerMs = Math.max(0, Math.min(300000, Math.round(snapshot.timerMs)));
+          }
+        }
+        this.lcuTimerWindow = timerWindow;
+        if (!next.draft.manualOverride) {
+          next.draft.phase = snapshot.phase;
+          next.draft.timerRunning = snapshot.timerRunning && next.draft.timerMs > 0;
+          if (snapshot.activeSide) next.draft.activeSide = snapshot.activeSide;
+        }
         for (const side of ['blue', 'red'] as const) {
-          next.draft.teams[side] = { picks: snapshot.teams[side].picks.map(pick => ({ championId: pick.championId, locked: pick.locked })), bans: [...snapshot.teams[side].bans] };
+          if (!next.draft.manualOverride) {
+            next.draft.teams[side] = { picks: snapshot.teams[side].picks.map(pick => ({ championId: pick.championId, locked: pick.locked })), bans: [...snapshot.teams[side].bans] };
+          }
           snapshot.teams[side].picks.forEach((pick, index) => { if (pick.player !== undefined) next.match.teams[side].players[index] = pick.player.slice(0, 24); });
         }
         next.lcu.feed = 'champ-select'; next.lcu.sessionId = snapshot.feedId; next.lcu.lastPayloadAt = snapshot.observedAt;
-      } else if (update.feed !== 'champ-select' || update.sessionId !== this.state.lcu.sessionId) next.lcu.lastPayloadAt = null;
+      } else {
+        this.lcuTimerWindow = undefined;
+        if (update.feed !== 'champ-select' || update.sessionId !== this.state.lcu.sessionId) next.lcu.lastPayloadAt = null;
+      }
       reconcileOutput(next);
       // A repeated poll refreshes liveness, but does not rewrite the disk just for timestamps.
       const comparable = (state: BroadcastState) => JSON.stringify({ ...state, lcu: { ...state.lcu, lastSeenAt: null, lastPayloadAt: null } });
@@ -374,3 +391,4 @@ export class StateManager {
     } finally { await unlink(temp).catch(() => undefined); }
   }
 }
+

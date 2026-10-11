@@ -234,8 +234,11 @@ export function normalizeChampSelectSession(
     }
   }
 
-  const activeAction = actions.find((action) => !action.completed && action.isInProgress)
-    ?? actions.find((action) => !action.completed && action.championId > 0);
+  const activeActionIndex = actions.findIndex((action) => !action.completed && action.isInProgress);
+  const selectedActionIndex = activeActionIndex >= 0
+    ? activeActionIndex
+    : actions.findIndex((action) => !action.completed && action.championId > 0);
+  const activeAction = selectedActionIndex >= 0 ? actions[selectedActionIndex] : undefined;
   const activeSide = activeAction ? cellMap.get(activeAction.actorCellId)?.side : undefined;
   const timerMs = Math.max(0, Math.min(
     300_000,
@@ -243,8 +246,12 @@ export function normalizeChampSelectSession(
   ));
   const phase = derivePhase(actions, session.timer?.phase);
   const feedId = String(session.gameId ?? session.id ?? "champ-select");
+  const timerKey = activeAction
+    ? `${session.timer?.phase ?? ""}:${selectedActionIndex}:${activeAction.type}:${activeAction.actorCellId}`
+    : `${session.timer?.phase ?? ""}:${phase}`;
   const snapshot: DraftFeedSnapshot = {
     feedId,
+    timerKey,
     observedAt,
     phase,
     timerMs,
