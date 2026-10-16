@@ -1,18 +1,56 @@
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { createServer } from 'node:http';
 import os from "node:os";
 import path from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { StateManager } from "../state-manager";
-import { pollLcuOnce } from "./adapter";
+import { pollLcuOnce, startLcuAdapter } from "./adapter";
 import { LcuHttpError } from "./http-client";
+import { discoverLockfileCandidates } from './discovery';
+vi.mock('./discovery', () => ({ discoverLockfileCandidates: vi.fn(async () => []) }));
 
 const tempDirs: string[] = [];
 
 afterEach(async () => {
+  vi.unstubAllEnvs();
   await Promise.all(tempDirs.splice(0).map((dir) => rm(dir, { recursive: true, force: true })));
 });
 
 describe("LCU polling pipeline", () => {
+  it('skips a stale lockfile whose reused port only returns 404 and discovers the real client', async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), 'virtualhud-candidate-')); tempDirs.push(dir);
+    const raw = JSON.parse(await readFile(path.resolve('fixtures/lcu/spectator-champ-select-session.json'), 'utf8'));
+    const stale = createServer((_request, response) => { response.writeHead(404, { 'content-type': 'application/json' }); response.end('{}'); });
+    const live = createServer((request, response) => { response.setHeader('content-type', 'application/json'); response.end(JSON.stringify(request.url?.includes('gameflow') ? 'ChampSelect' : raw)); });
+    await Promise.all([stale, live].map(server => new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))));
+    const oldFile = path.join(dir, 'old-lock'), realFile = path.join(dir, 'real-lock');
+    await writeFile(oldFile, `LeagueClient:${process.pid}:${(stale.address() as { port: number }).port}:fixture:http`);
+    await writeFile(realFile, `LeagueClient:${process.pid}:${(live.address() as { port: number }).port}:fixture:http`);
+    vi.stubEnv('LCU_LOCKFILE_PATH', oldFile);
+    vi.mocked(discoverLockfileCandidates).mockResolvedValue([realFile]);
+    const manager = new StateManager(dir); await manager.init();
+    const stop = startLcuAdapter(manager);
+    try { await vi.waitFor(() => expect(manager.getState().lcu.sessionId).toBe(String(raw.gameId)), { timeout: 2500 }); }
+    finally { stop(); await Promise.all([stale, live].map(server => new Promise<void>(resolve => server.close(() => resolve())))); }
+  });
+  it('keeps a shared action-group clock when one simultaneous ban locks', async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), 'virtualhud-shared-clock-')); tempDirs.push(dir);
+    const manager = new StateManager(dir); await manager.init();
+    const blue = { type: 'ban', actorCellId: 0, championId: 266, completed: false, isInProgress: true };
+    const red = { type: 'ban', actorCellId: 5, championId: 22, completed: false, isInProgress: true };
+    const raw = { gameId: 12, blueTeam: [{ cellId: 0 }], redTeam: [{ cellId: 5 }], actions: [[blue, red]], timer: { phase: 'BAN_PICK', adjustedTimeLeftInPhase: 30000 } };
+    const client = { async getJson<T>(endpoint: string): Promise<T> { return (endpoint.includes('gameflow') ? 'ChampSelect' : raw) as T; } };
+    await pollLcuOnce(client, manager); const initial = manager.getState().draft;
+    blue.completed = true; blue.isInProgress = false; raw.timer.adjustedTimeLeftInPhase = 15000;
+    await pollLcuOnce(client, manager); const remaining = manager.getState().draft;
+    expect(remaining.timerMs).toBe(15000);
+    expect(remaining.timerWindow).toBe(initial.timerWindow);
+    expect(remaining.timerDurationMs).toBe(30000);
+    raw.actions = [[blue, { ...red, completed: true, isInProgress: false }], [{ ...red, championId: 13 }]];
+    raw.timer.adjustedTimeLeftInPhase = 30000;
+    await pollLcuOnce(client, manager);
+    expect(manager.getState().draft.timerWindow).not.toBe(initial.timerWindow);
+  });
   it('publishes hover changes and lock-only changes for picks and bans', async () => {
     const dir = await mkdtemp(path.join(os.tmpdir(), 'virtualhud-lock-states-'));
     tempDirs.push(dir);

@@ -15,6 +15,8 @@
 - Prevent LCU champ-select timer bounce within the same action window. Preserve manual control.
 - Fix CI security audit failures by updating sharp, fast-uri, brace-expansion and source-map-js to patched versions.
 - Read the health-check version from package metadata so START.cmd accepts future releases. Correct repository links and include the HUD design specification.
+- Preserve shared action-group timers when one participant locks. Keep traded champion ownership during finalization. Re-arm the final hold after late reconnects to custom games that reuse an ID.
+- Reject generic 404 responses when validating discovered LCU candidates, so stale ports do not mask the real client.
 
 ## 1.2.0 - 2026-09-28
 

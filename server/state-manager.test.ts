@@ -13,6 +13,28 @@ afterEach(async () => {
 });
 
 describe("StateManager revision", () => {
+  it('re-arms the final hold when a reused custom-game ID reconnects in pick-2', async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), 'virtualhud-reused-session-')); tempDirs.push(dir);
+    let now = 0;
+    const manager = new StateManager(dir, undefined, () => now); await manager.init();
+    await manager.dispatch({ type: 'RESUME_AUTO_OUTPUT' });
+    const team = () => ({ picks: Array.from({ length: 5 }, () => ({ championId: 'Ashe', locked: true })), bans: Array(5).fill(null) });
+    const snapshot: DraftFeedSnapshot = { feedId: '0', phase: 'pick-2', observedAt: new Date().toISOString(), timerMs: 10000, timerRunning: true, teams: { blue: team(), red: team() } };
+    await manager.ingestDraftFeed(snapshot);
+    await manager.ingestDraftFeed({ ...snapshot, phase: 'complete', timerMs: 0, timerRunning: false });
+    now = 15000; await manager.tick(15000);
+    expect(manager.getState().activeOutput).toBe('none');
+    await manager.setLcuStatus({ connected: false, message: 'Fixture reconnect' });
+    await manager.ingestDraftFeed(snapshot);
+    expect(manager.getState().activeOutput).toBe('draft');
+    const second = await manager.ingestDraftFeed({ ...snapshot, phase: 'complete', timerMs: 0, timerRunning: false });
+    expect(second.draft.finalizationMs).toBe(15000);
+    expect(second.activeOutput).toBe('draft');
+    now += 14999; await manager.tick(14999);
+    expect(manager.getState().activeOutput).toBe('draft');
+    now += 1; await manager.tick(1);
+    expect(manager.getState().activeOutput).toBe('none');
+  });
   it('reads older bans as final and preserves explicit hover locks through saved-state loading', () => {
     const old = createInitialState();
     old.draft.teams.blue.bans[0] = 'Ashe';

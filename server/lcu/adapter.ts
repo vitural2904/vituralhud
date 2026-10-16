@@ -105,7 +105,7 @@ export function startLcuAdapter(manager: StateManager) {
           try {
             const phase = await new LcuHttpClient(candidate).getJson<unknown>(GAMEFLOW_ENDPOINT);
             return typeof phase === 'string';
-          } catch (error) { return isLcuNotFound(error); }
+          } catch { return false; } // A generic 404 on a reused port does not establish LCU identity.
         });
         if (!lockfile) throw new Error("Chưa thấy League Client");
         client = new LcuHttpClient(lockfile);

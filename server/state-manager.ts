@@ -304,7 +304,7 @@ export class StateManager {
             finalizationDeadline = this.clock() + 15_000;
           }
           if (snapshot.phase === 'complete') finalizingFeed = snapshot.feedId;
-          else if (newSession || ['waiting', 'ban-1', 'pick-1', 'ban-2'].includes(snapshot.phase)) finalizingFeed = undefined;
+          else finalizingFeed = undefined; // Any confirmed unfinished draft re-arms custom sessions that reuse gameId=0.
         }
         const timerWindow = `${snapshot.feedId}:${snapshot.phase}:${snapshot.timerKey ?? ''}`;
         const timerWindowChanged = this.lcuTimerWindow !== timerWindow;

@@ -172,20 +172,27 @@ function emptyPicks(): DraftFeedPick[] {
   return Array.from({ length: 5 }, () => ({ championId: null, locked: false }));
 }
 
-function derivePhase(actions: LcuAction[], timerPhase: string | undefined): DraftPhase {
+function resolveTurn(groups: LcuAction[][], timerPhase: string | undefined) {
+  const actions = groups.flat();
+  const inProgress = (action: LcuAction) => !action.completed && action.isInProgress;
+  const tentative = (action: LcuAction) => !action.completed && action.championId > 0;
+  const activeIndex = groups.findIndex(group => group.some(inProgress));
+  const groupIndex = activeIndex >= 0 ? activeIndex : groups.findIndex(group => group.some(tentative));
+  const activeAction = groups[groupIndex]?.find(inProgress) ?? groups[groupIndex]?.find(tentative);
+  const previous = groups.slice(0, Math.max(0, groupIndex)).flat();
   const normalizedTimer = timerPhase?.toUpperCase().replace(/[^A-Z]/g, "") ?? "";
   const completedPicks = actions.filter((action) => action.type === "pick" && action.completed).length;
   const completedBans = actions.filter((action) => action.type === "ban" && action.completed).length;
-  if (["FINALIZATION", "GAMESTARTING", "COMPLETE"].includes(normalizedTimer) || completedPicks >= 10) return "complete";
-  const active = actions.find((action) => !action.completed && action.isInProgress)
-    ?? actions.find((action) => !action.completed && action.championId > 0);
-  if (active?.type === "ban") return completedBans < 6 ? "ban-1" : "ban-2";
-  if (active?.type === "pick") return completedPicks < 6 ? "pick-1" : "pick-2";
-  if (completedPicks >= 6) return "pick-2";
-  if (completedBans >= 6) return "ban-2";
-  if (completedPicks > 0) return "pick-1";
-  if (completedBans > 0) return "ban-1";
-  return "waiting";
+  let phase: DraftPhase = 'waiting';
+  if (["FINALIZATION", "GAMESTARTING", "COMPLETE"].includes(normalizedTimer) || completedPicks >= 10) phase = 'complete';
+  // A shared action group owns one clock/round, even as its actors lock one by one.
+  else if (activeAction?.type === 'ban') phase = previous.filter(action => action.type === 'ban' && action.completed).length < 6 ? 'ban-1' : 'ban-2';
+  else if (activeAction?.type === 'pick') phase = previous.filter(action => action.type === 'pick' && action.completed).length < 6 ? 'pick-1' : 'pick-2';
+  else if (completedPicks >= 6) phase = 'pick-2';
+  else if (completedBans >= 6) phase = 'ban-2';
+  else if (completedPicks > 0) phase = 'pick-1';
+  else if (completedBans > 0) phase = 'ban-1';
+  return { phase, groupIndex, activeAction };
 }
 
 export function normalizeChampSelectSession(
@@ -217,6 +224,7 @@ export function normalizeChampSelectSession(
   }
 
   const actions = session.actions?.flat() ?? [];
+  const { phase, groupIndex, activeAction } = resolveTurn(session.actions ?? [], session.timer?.phase);
   const banIndex: Record<Side, number> = { blue: 0, red: 0 };
   for (const action of actions) {
     const actor = cellMap.get(action.actorCellId);
@@ -226,7 +234,11 @@ export function normalizeChampSelectSession(
     }
     const championId = mapChampion(action.championId, warnings);
     if (action.type === "pick" && championId) {
-      picks[actor.side][actor.index].championId = championId;
+      // Once draft ends, participant ownership reflects trades. Historical
+      // completed pick actions still establish the lock, not the current owner.
+      const owned = phase === 'complete' && action.completed
+        ? mapChampion(resolution.teams[actor.side][actor.index].championId, warnings) : null;
+      picks[actor.side][actor.index].championId = owned ?? championId;
       picks[actor.side][actor.index].locked = action.completed;
     }
     if (action.type === "ban" && banIndex[actor.side] < 5) {
@@ -236,20 +248,14 @@ export function normalizeChampSelectSession(
     }
   }
 
-  const activeActionIndex = actions.findIndex((action) => !action.completed && action.isInProgress);
-  const selectedActionIndex = activeActionIndex >= 0
-    ? activeActionIndex
-    : actions.findIndex((action) => !action.completed && action.championId > 0);
-  const activeAction = selectedActionIndex >= 0 ? actions[selectedActionIndex] : undefined;
   const activeSide = activeAction ? cellMap.get(activeAction.actorCellId)?.side : undefined;
   const timerMs = Math.max(0, Math.min(
     300_000,
     session.timer?.adjustedTimeLeftInPhase ?? session.timer?.timeLeftInPhase ?? 0,
   ));
-  const phase = derivePhase(actions, session.timer?.phase);
   const feedId = String(session.gameId ?? session.id ?? "champ-select");
   const timerKey = activeAction
-    ? `${session.timer?.phase ?? ""}:${selectedActionIndex}:${activeAction.type}:${activeAction.actorCellId}`
+    ? `${session.timer?.phase ?? ""}:group:${groupIndex}`
     : `${session.timer?.phase ?? ""}:${phase}`;
   const snapshot: DraftFeedSnapshot = {
     feedId,

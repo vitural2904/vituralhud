@@ -8,6 +8,31 @@ async function fixture(name: string) {
 }
 
 describe("LCU champ-select normalization", () => {
+  it('does not advance the round when six actors finish within one shared ban group', () => {
+    const blueTeam = Array.from({ length: 5 }, (_, cellId) => ({ cellId }));
+    const redTeam = Array.from({ length: 5 }, (_, index) => ({ cellId: index + 5 }));
+    const group = [...blueTeam, ...redTeam].map(player => ({ type: 'ban', actorCellId: player.cellId, championId: 266, completed: false, isInProgress: true }));
+    const raw = { blueTeam, redTeam, actions: [group], timer: { phase: 'BAN_PICK' } };
+    const before = normalizeChampSelectSession(raw).snapshot!;
+    for (const action of group.slice(0, 6)) { action.completed = true; action.isInProgress = false; }
+    const after = normalizeChampSelectSession(raw).snapshot!;
+    expect(after.phase).toBe('ban-1');
+    expect(after.timerKey).toBe(before.timerKey);
+  });
+  it('preserves traded champion ownership during finalization instead of replaying original picks', () => {
+    const blueTeam = Array.from({ length: 5 }, (_, cellId) => ({ cellId, championId: cellId === 0 ? 22 : 266 }));
+    const redTeam = Array.from({ length: 5 }, (_, index) => ({ cellId: index + 5, championId: index === 0 ? 13 : 134 }));
+    const actions = [[...blueTeam, ...redTeam].map(player => ({ type: 'pick', actorCellId: player.cellId, championId: player.cellId === 1 ? 22 : player.cellId === 6 ? 13 : player.cellId < 5 ? 266 : 134, completed: true }))];
+    const raw = { isSpectating: true, blueTeam, redTeam, actions, timer: { phase: 'FINALIZATION' } };
+    const final = normalizeChampSelectSession(raw).snapshot!;
+    expect(final.phase).toBe('complete');
+    expect(final.teams.blue.picks.slice(0, 2).map(pick => pick.championId)).toEqual(['Ashe', 'Aatrox']);
+    expect(final.teams.red.picks.slice(0, 2).map(pick => pick.championId)).toEqual(['Ryze', 'Syndra']);
+    expect(final.teams.blue.picks.every(pick => pick.locked)).toBe(true);
+    // A delayed participant update before finalization must not override a lock action.
+    actions[0].pop(); raw.timer.phase = 'BAN_PICK';
+    expect(normalizeChampSelectSession(raw).snapshot!.teams.blue.picks[0].championId).toBe('Aatrox');
+  });
   it.each(['pick', 'ban'])('keeps both teams visible in tournament spectator %s actions', type => {
     const result = normalizeChampSelectSession({
       isSpectating: true, localPlayerCellId: -1,
