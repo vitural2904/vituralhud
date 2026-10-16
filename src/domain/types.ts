@@ -45,11 +45,16 @@ export type MatchContext = {
 export type DraftTeamState = {
   picks: DraftSlot[];
   bans: (string | null)[];
+  // Parallel to bans. Absent in older states, where populated bans were final.
+  banLocked?: boolean[];
 };
 
 export type DraftRuntimeState = {
   phase: DraftPhase;
+  finalizationMs?: number;
   timerMs: number;
+  timerDurationMs?: number;
+  timerWindow?: string;
   timerRunning: boolean;
   activeSide: Side;
   autoSync: boolean;
@@ -130,6 +135,7 @@ export type DraftFeedPick = {
 export type DraftFeedTeam = {
   picks: DraftFeedPick[];
   bans: (string | null)[];
+  banLocked?: boolean[];
 };
 
 export type DraftFeedSnapshot = {
@@ -184,7 +190,7 @@ export type BroadcastCommand =
   | { type: "SET_BEST_OF"; value: 1 | 3 | 5 }
   | { type: "SET_PLAYER"; side: Side; index: number; value: string }
   | { type: "SET_PICK"; side: Side; index: number; championId: string | null; locked?: boolean }
-  | { type: "SET_BAN"; side: Side; index: number; championId: string | null }
+  | { type: "SET_BAN"; side: Side; index: number; championId: string | null; locked?: boolean }
   | { type: "SET_PHASE"; phase: DraftPhase; activeSide?: Side }
   | { type: "SET_TIMER"; timerMs: number }
   | { type: "TOGGLE_TIMER" }

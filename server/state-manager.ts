@@ -188,9 +188,11 @@ export class StateManager {
   private queue: Promise<unknown> = Promise.resolve();
   private generation = 0;
   private lcuTimerWindow: string | undefined;
+  private finalizingFeed: string | undefined;
+  private finalizationDeadline = 0;
   private warning: string | null = null;
   readonly instanceId = crypto.randomUUID();
-  constructor(private readonly dataDir = path.resolve('data'), private readonly fault?: (stage: StorageStage) => void | Promise<void>) {}
+  constructor(private readonly dataDir = path.resolve('data'), private readonly fault?: (stage: StorageStage) => void | Promise<void>, private readonly clock = () => performance.now()) {}
   private serial<T>(task: () => Promise<T>): Promise<T> {
     const operation = this.queue.then(task);
     this.queue = operation.catch(() => undefined);
@@ -217,6 +219,7 @@ export class StateManager {
     }
     this.state.activeOutput = 'none'; this.state.outputOwner = 'operator';
     this.state.draft.timerRunning = false;
+    this.state.draft.finalizationMs = 0;
     this.state.lcu = { ...createInitialState().lcu };
     reconcileOutput(this.state);
     validateState(this.state);
@@ -272,26 +275,48 @@ export class StateManager {
   isCurrentFetch(generation: number) { return generation === this.generation && this.state.postMatch.status === 'fetching'; }
   async tick(deltaMs: number) {
     return this.serial(async () => {
-      if (!this.state.draft.timerRunning) return this.getState();
+      if (!this.state.draft.timerRunning && !this.state.draft.finalizationMs) return this.getState();
       const next = structuredClone(this.state);
-      next.draft.timerMs = Math.max(0, next.draft.timerMs - Math.max(0, Math.round(deltaMs)));
+      const elapsed = Math.max(0, Math.round(deltaMs));
+      next.draft.finalizationMs = this.state.draft.finalizationMs ? Math.max(0, Math.ceil(this.finalizationDeadline - this.clock())) : 0;
+      if (next.draft.timerRunning) next.draft.timerMs = Math.max(0, next.draft.timerMs - elapsed);
       if (!next.draft.timerMs) next.draft.timerRunning = false;
+      reconcileOutput(next);
       return this.commit(next, 'Timer tick', next.source, false);
     });
   }
   async ingestLcuFrame(update: Parameters<StateManager['setLcuStatus']>[0], snapshot?: DraftFeedSnapshot) {
     return this.serial(async () => {
       const next = structuredClone(this.state);
+      let finalizingFeed = this.finalizingFeed;
+      let finalizationDeadline = this.finalizationDeadline;
       next.lcu = { ...next.lcu, ...update };
       if (!update.connected) next.lcu = { ...createInitialState().lcu, message: update.message };
       else next.lcu.lastSeenAt = new Date().toISOString();
       if (snapshot) {
+        if (!next.draft.manualOverride) {
+          const newSession = (this.finalizingFeed ?? this.state.lcu.sessionId) !== snapshot.feedId;
+          if (newSession || snapshot.phase !== 'complete') next.draft.finalizationMs = 0;
+          if (!newSession && snapshot.phase === 'complete' && this.state.draft.phase !== 'complete'
+            && this.state.activeOutput === 'draft' && this.state.outputOwner === 'lcu'
+            && this.finalizingFeed !== snapshot.feedId) {
+            next.draft.finalizationMs = 15_000;
+            finalizationDeadline = this.clock() + 15_000;
+          }
+          if (snapshot.phase === 'complete') finalizingFeed = snapshot.feedId;
+          else if (newSession || ['waiting', 'ban-1', 'pick-1', 'ban-2'].includes(snapshot.phase)) finalizingFeed = undefined;
+        }
         const timerWindow = `${snapshot.feedId}:${snapshot.phase}:${snapshot.timerKey ?? ''}`;
         const timerWindowChanged = this.lcuTimerWindow !== timerWindow;
         const returningToLcu = !this.state.draft.autoSync || this.state.draft.manualOverride;
         if (next.draft.autoSync && !next.draft.manualOverride) {
+          const timerSourceChanged = next.draft.timerWindow !== timerWindow;
+          if (timerSourceChanged || next.draft.timerDurationMs === undefined) {
+            next.draft.timerDurationMs = Math.max(0, Math.min(300000, Math.round(snapshot.timerMs)));
+            next.draft.timerWindow = timerWindow;
+          }
           const timerDelta = snapshot.timerMs - next.draft.timerMs;
-          if (timerWindowChanged || returningToLcu || timerDelta <= -750) {
+          if (timerWindowChanged || timerSourceChanged || returningToLcu || timerDelta <= -750) {
             next.draft.timerMs = Math.max(0, Math.min(300000, Math.round(snapshot.timerMs)));
           }
         }
@@ -303,20 +328,31 @@ export class StateManager {
         }
         for (const side of ['blue', 'red'] as const) {
           if (!next.draft.manualOverride) {
-            next.draft.teams[side] = { picks: snapshot.teams[side].picks.map(pick => ({ championId: pick.championId, locked: pick.locked })), bans: [...snapshot.teams[side].bans] };
+            const team = snapshot.teams[side];
+            next.draft.teams[side] = {
+              picks: team.picks.map(pick => ({ championId: pick.championId, locked: pick.locked })),
+              bans: [...team.bans],
+              banLocked: team.bans.map((id, index) => team.banLocked?.[index] ?? Boolean(id)),
+            };
           }
           snapshot.teams[side].picks.forEach((pick, index) => { if (pick.player !== undefined) next.match.teams[side].players[index] = pick.player.slice(0, 24); });
         }
         next.lcu.feed = 'champ-select'; next.lcu.sessionId = snapshot.feedId; next.lcu.lastPayloadAt = snapshot.observedAt;
       } else {
         this.lcuTimerWindow = undefined;
+        if (update.gameflowPhase && ['None', 'Lobby', 'Matchmaking', 'ReadyCheck'].includes(update.gameflowPhase)) next.draft.finalizationMs = 0;
         if (update.feed !== 'champ-select' || update.sessionId !== this.state.lcu.sessionId) next.lcu.lastPayloadAt = null;
       }
       reconcileOutput(next);
       // A repeated poll refreshes liveness, but does not rewrite the disk just for timestamps.
       const comparable = (state: BroadcastState) => JSON.stringify({ ...state, lcu: { ...state.lcu, lastSeenAt: null, lastPayloadAt: null } });
-      if (comparable(next) === comparable(this.state)) { this.state.lcu = next.lcu; return this.getState(); }
-      return this.commit(next, 'LCU feed updated', 'lcu');
+      if (comparable(next) === comparable(this.state)) {
+        this.state.lcu = next.lcu; this.finalizingFeed = finalizingFeed; this.finalizationDeadline = finalizationDeadline;
+        return this.getState();
+      }
+      const result = await this.commit(next, 'LCU feed updated', 'lcu');
+      this.finalizingFeed = finalizingFeed; this.finalizationDeadline = finalizationDeadline;
+      return result;
     });
   }
   async ingestDraftFeed(snapshot: DraftFeedSnapshot) {

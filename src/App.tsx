@@ -10,7 +10,7 @@ export function App() {
   useEffect(() => { document.title = route.includes('post-match') ? 'VirtualHUD · Post-match' : 'VirtualHUD'; }, [route]);
   const active = data.fresh;
   let view;
-  if (route === '/overlay') view = data.state.activeOutput === 'post-match' ? <PostMatchOverlay state={data.state} visible={active} immediate={!active} /> : <DraftOverlay state={data.state} visible={active && data.state.activeOutput === 'draft'} immediate={!active} />;
+  if (route === '/overlay') view = <div className="program-output"><DraftOverlay state={data.state} visible={active && data.state.activeOutput === 'draft'} immediate={!active} /><PostMatchOverlay state={data.state} visible={active && data.state.activeOutput === 'post-match'} immediate={!active} /></div>;
   else if (route === '/overlay/post-match') view = <PostMatchOverlay state={data.state} visible={active && data.state.activeOutput === 'post-match'} immediate={!active} />;
   else if (route === '/preview/post-match') view = <PostMatchOverlay state={data.state} visible />;
   else if (route === '/preview/draft') view = <DraftOverlay state={data.state} visible />;

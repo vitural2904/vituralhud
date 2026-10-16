@@ -49,6 +49,14 @@ Sau đó nhấp đúp `START.cmd`. Mỗi lần cập nhật repo hoặc lockfile
 Launcher kiểm tra dependency. Nếu thiếu hoặc sai phiên bản, launcher báo lệnh cần chạy. App không tự cài.
 Launcher kiểm tra đúng app trên cổng 4174. Bản cũ phải đóng trước.
 Khởi động mới luôn tắt sóng. Dữ liệu cũ vẫn được giữ.
+`START.cmd` theo dõi tiến trình server. Server lỗi: tự khởi động lại, tối đa 3 lần trong 60 giây.
+Mỗi lần phục hồi vẫn tắt sóng. Lý do thoát và lịch sử phục hồi nằm trong `.codex-local/server.log`.
+Server dừng sạch sẽ không tự mở lại. Chạy `npm start` trực tiếp không có bộ theo dõi này.
+
+Nhấp đúp `STOP.cmd` để dừng app đã mở bằng `START.cmd`. Hoặc chạy `npm stop`.
+Lệnh dừng cả server và bộ tự phục hồi. Dữ liệu vẫn được giữ. App không tự mở lại.
+Nếu dùng `DRAFT_DATA_DIR` riêng, đặt cùng giá trị khi chạy STOP.
+App mở trực tiếp bằng `npm start`: dùng Ctrl+C tại terminal đó.
 
 Dashboard mở tại:
 
@@ -95,15 +103,25 @@ Server mất kết nối quá 5 giây: output tự ẩn. Preview vẫn hiện.
 
 ## Ban/pick
 
+HUD gọn kiểu broadcast: tên tuyển thủ xoay dọc, role nhỏ cạnh tên, logo và mã đội nằm giữa.
+Thanh mảnh phía trên co đều từ hai đầu vào tâm. Không hiện số đếm trên overlay.
+Thanh chạy mượt giữa các nhịp LCU. Pause dừng ngay. Lượt mới làm đầy lại thanh.
+Dashboard vẫn có số giây để operator điều khiển. Đặc tả và kiểm tra: `docs/design/champ-select-hud.md`.
+
 Mở League Client trước. Chạy VirtualHUD. Vào ChampSelect.
 
 App tự đọc LCU. Bấm `TRẢ QUYỀN CHO LCU` để bật phát tự động.
-Feed chưa rõ hoặc draft hoàn tất sẽ tắt output tự động.
+Draft hoàn tất: giữ đội hình cuối 15 giây rồi tự ẩn. Poll lặp không kéo dài thời gian.
+Có thể tắt tay ngay. Hủy draft hoặc về lobby sẽ ẩn ngay.
+Feed chưa rõ trước khi draft hoàn tất sẽ tắt output tự động.
 LCU không tự giành output operator đang giữ.
 Bật `Manual` để sửa và phát ban/pick bằng tay.
 `DEMO STEP` dùng dữ liệu mẫu. Chỉ dùng để thử.
 
-Client cài ở chỗ lạ:
+App tự tìm thư mục game qua League Client đang chạy, `RiotClientInstalls.json` và metadata cài đặt Riot.
+App chỉ đọc đường dẫn executable. Không đọc command line chứa token. Không quét toàn ổ đĩa.
+Lockfile cũ hoặc của Riot Client khác bị bỏ qua. Token được đọc lại sau khi mất kết nối.
+Nếu cần chỉ định đường dẫn tay:
 
 ```powershell
 $env:LCU_LOCKFILE_PATH="D:\Riot Games\League of Legends\lockfile"
@@ -218,6 +236,10 @@ Event log là lịch sử ngắn. Phục hồi dữ liệu dùng snapshot dự p
 Một thư mục dữ liệu chỉ có một tiến trình server.
 
 ## Font
+
+Ban/pick và post-match dùng Unbounded cho số lớn, Archivo Expanded cho tên và nhãn.
+Hai font có đủ chữ Việt. File WOFF2 và giấy phép OFL đi kèm repo. OBS không cần tải font từ Internet.
+Dashboard giữ font hiện tại. Nguồn và kiểm tra glyph: `docs/research/overlay-fonts.md`.
 
 Repo có Be Vietnam Pro 400, 500, 600 và 700. Dùng được tiếng Việt.
 Lens Grotesk là font riêng trên máy người dùng. Không có trong clone sạch.

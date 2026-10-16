@@ -13,6 +13,15 @@ afterEach(async () => {
 });
 
 describe("StateManager revision", () => {
+  it('reads older bans as final and preserves explicit hover locks through saved-state loading', () => {
+    const old = createInitialState();
+    old.draft.teams.blue.bans[0] = 'Ashe';
+    const loaded = migrateSavedState(old);
+    expect(loaded.draft.teams.blue.bans[0]).toBe('Ashe');
+    expect(loaded.draft.teams.blue.banLocked).toBeUndefined();
+    old.draft.teams.blue.banLocked = [false, false, false, false, false];
+    expect(migrateSavedState(old).draft.teams.blue.banLocked?.[0]).toBe(false);
+  });
   it('marks new missing legacy metrics as unknown instead of confirmed zeros', () => {
     const legacy = createInitialState() as any;
     delete legacy.schemaVersion; legacy.postMatch.status = 'review';
@@ -64,6 +73,16 @@ describe("StateManager revision", () => {
     const jittered = await manager.ingestDraftFeed({ ...snapshot, timerMs: 27_500 });
     expect(jittered.revision).toBe(2);
     expect(jittered.draft.timerMs).toBe(28_000);
+    expect(jittered.draft.timerDurationMs).toBe(28_000);
+    const adjusted = await manager.ingestDraftFeed({ ...snapshot, timerMs: 20_000 });
+    expect(adjusted.draft.timerDurationMs).toBe(28_000);
+    expect(adjusted.draft.timerWindow).toBe(jittered.draft.timerWindow);
+    const nextAction = await manager.ingestDraftFeed({ ...snapshot, timerKey: 'next-action', timerMs: 15_000 });
+    expect(nextAction.draft.timerDurationMs).toBe(15_000);
+    expect(nextAction.draft.timerWindow).not.toBe(jittered.draft.timerWindow);
+    await manager.setLcuStatus({ connected: false, message: 'Reconnect fixture' });
+    const reconnected = await manager.ingestDraftFeed({ ...snapshot, timerKey: 'next-action', timerMs: 10000 });
+    expect(reconnected.draft.timerDurationMs).toBe(15000);
   });
 
   it("does not apply an external snapshot during manual override", async () => {

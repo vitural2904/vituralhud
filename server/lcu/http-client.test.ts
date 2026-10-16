@@ -21,4 +21,15 @@ describe('LCU local HTTP boundary', () => {
     try { await api.getJson('/missing'); throw new Error('Expected rejection'); } catch (error) { expect(isLcuNotFound(error)).toBe(true); }
   });
   it('times out a silent local client', async () => { const api = await client(() => undefined, 40); await expect(api.getJson('/silent')).rejects.toThrow('timeout'); });
+  it('rejects a response cut off during a client phase change instead of hanging', async () => {
+    const api = await client((_request, response) => {
+      response.writeHead(200, { 'Content-Length': '100' });
+      response.write('{');
+      setTimeout(() => response.destroy(), 10);
+    });
+    await expect(Promise.race([
+      api.getJson('/interrupted'),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('hung response')), 400)),
+    ])).rejects.toThrow('LCU');
+  });
 });

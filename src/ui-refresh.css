@@ -260,18 +260,8 @@ body:has(.control-shell) { background: var(--canvas); color: var(--ink); }
 .toast-dock { position: fixed; z-index: 200; right: 24px; bottom: 102px; }
 
 /* Broadcast type and hierarchy. */
-.overlay-shell,
 .post-overlay { font-family: "Lens Grotesk", "Be Vietnam Pro", sans-serif; }
-.team-footer strong,
-.post-team-copy strong,
-.pick-player { font-family: "Lens Grotesk", "Be Vietnam Pro", sans-serif; }
-.broadcast-spine { min-height: 330px; }
-.ban-label,
-.pick-champion,
-.center-meta > strong,
-.phase b { font-size: max(12px, .68vw); }
-.center-meta > span { font-size: max(12px, .58vw); }
-.pick-player { font-size: max(12px, .82vw); }
+.post-team-copy strong { font-family: "Lens Grotesk", "Be Vietnam Pro", sans-serif; }
 .post-section-title span,
 .leader-feature-copy > span,
 .leader-support-row span { font-size: max(12px, .72vw); }
@@ -389,12 +379,8 @@ body:has(.control-shell) { background: var(--canvas); color: var(--ink); }
 .workspace-heading p { font-weight: 300; font-style: var(--lens-note-style); }
 .workspace-heading h1 { line-height: 1.05; }
 
-.overlay-shell :is(.ban-label, .pick-champion, .center-meta > strong, .phase b, .team-footer strong),
 .post-overlay :is(.post-team-copy > span, .post-section-title span, .leader-feature-copy > span, .leader-support-row span) { font-weight: 600; font-stretch: normal; }
-.overlay-shell .center-meta > span,
 .post-overlay .post-duration span { font-weight: 400; }
-.overlay-shell .pick-player { font-weight: 500; }
-.overlay-shell .timer { font-weight: 700; font-stretch: normal; }
 .post-overlay .post-team-copy strong { font-weight: 600; font-stretch: normal; line-height: 1; }
 .post-overlay :is(.post-team > b, .leader-feature-copy strong) { font-weight: 700; font-stretch: normal; line-height: .95; }
 .post-overlay :is(.post-metric strong, .leader-support-row strong) { font-weight: 500; font-stretch: normal; }

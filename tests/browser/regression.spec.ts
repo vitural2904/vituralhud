@@ -129,6 +129,31 @@ test('F27 missing Lens fonts use bundled Vietnamese fallback', async ({ page }) 
   for (const weight of [400, 500, 600, 700]) expect(await page.evaluate(async weight => (await document.fonts.load(`${weight} 16px "Be Vietnam Pro"`, 'Đặng Văn Lâm')).length > 0, weight)).toBe(true);
   expect(await page.locator('.workspace-heading p').evaluate(element => getComputedStyle(element).fontWeight)).toBe('400');
 });
+
+test('broadcast fonts load Vietnamese locally; dashboard keeps its existing family', async ({ page, request }) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await loaded(page, '/control');
+  const dashboardFamily = await page.locator('.control-shell').evaluate(element => getComputedStyle(element).fontFamily);
+  await action(request, { type: 'RUN_DEMO_STEP' });
+  await action(request, { type: 'SET_TEAM', side: 'blue', field: 'name', value: 'ĐỘI TUYỂN VIỆT NAM' });
+  await page.goto('/preview/draft');
+  await expect(page.locator('.pick-player').first()).toBeVisible();
+  for (const family of ['Unbounded', 'Archivo']) {
+    expect(await page.evaluate(async family => (await document.fonts.load(`600 24px "${family}"`, 'Đặng Hữu Trung Ắ Ằ Ẩ Ễ Ộ Ỡ Ự')).length, family)).toBeGreaterThan(0);
+  }
+  await expect(page.locator('.center-monogram').first()).toHaveCSS('font-family', 'Unbounded, "Be Vietnam Pro", sans-serif');
+  await expect(page.locator('.pick-player').first()).toHaveCSS('font-family', 'Archivo, "Be Vietnam Pro", sans-serif');
+  await page.screenshot({ path: 'test-results/playwright/obs-draft-fonts-1920.png' });
+  await action(request, { type: 'POST_MATCH_LOAD_FIXTURE' });
+  await page.goto('/preview/post-match');
+  await expect(page.locator('.post-duration strong')).toHaveCSS('font-family', 'Unbounded, "Be Vietnam Pro", sans-serif');
+  await page.evaluate(() => document.fonts.ready);
+  await expect(page.locator('.post-team--blue > b')).toHaveText('18');
+  await expect(page.locator('.post-team--red > b')).toHaveText('6');
+  await page.screenshot({ path: 'test-results/playwright/obs-post-fonts-1920.png' });
+  await loaded(page, '/control');
+  expect(await page.locator('.control-shell').evaluate(element => getComputedStyle(element).fontFamily)).toBe(dashboardFamily);
+});
 test('F28 valid controls have no critical accessibility failures or runtime errors', async ({ page, request }) => {
   const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
   await action(request, { type: 'POST_MATCH_LOAD_FIXTURE' }); await loaded(page);

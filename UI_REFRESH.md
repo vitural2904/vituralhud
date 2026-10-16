@@ -18,7 +18,7 @@
 | Overlay result values | CountUp | Used for result values. Live clocks stay exact. |
 | Tables and broadcast composition | Custom | Rebuilt for the workflow and OBS output. |
 
-## Font setup
+## Font setup (dashboard)
 
 15 Lens Grotesk WOFF2 faces are available locally, converted from the user's supplied font folder. Thin, ExtraLight, Light, Book, Medium, SemiBold, Bold and their italics are available, plus Regular. ExtraBold is absent. Each face loads independently.
 
@@ -35,6 +35,6 @@
 | Post-match overview and support values | Medium 500 |
 | Large post-match duration | Thin 100 |
 
-These roles apply to `/control`, `/control/post-match`, `/preview/draft`, `/preview/post-match`, and both renderers behind `/overlay`. Numeric controls and clocks use tabular figures. No synthetic weights or italics.
+These roles describe `/control` and `/control/post-match`. Broadcast overlays now use bundled Vietnamese Archivo and Unbounded. Their current layout and motion contract is in `docs/design/champ-select-hud.md`; font sources are in `docs/research/overlay-fonts.md`. Numeric controls use tabular figures. No synthetic weights or italics.
 
 The repository ignores Lens WOFF2 files. A clean clone uses bundled Be Vietnam Pro 400, 500, 600 and 700. Missing thin styles map to available fallback weights. The server lists served Lens faces; the client does not probe missing font URLs.

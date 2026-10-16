@@ -20,6 +20,9 @@ export function isRuntimeState(value: unknown): value is BroadcastState {
   const match = value.match; const draft = value.draft; const post = value.postMatch; const lcu = value.lcu;
   if (![match.matchName, match.gameLabel, match.patch].every(item => text(item, 40)) || !oneOf(match.bestOf, [1, 3, 5])) return false;
   if (!oneOf(draft.phase, ['waiting', 'ban-1', 'pick-1', 'ban-2', 'pick-2', 'complete']) || !number(draft.timerMs, 300000) || ![draft.timerRunning, draft.autoSync, draft.manualOverride].every(item => typeof item === 'boolean') || !oneOf(draft.activeSide, ['blue', 'red'])) return false;
+  if (draft.timerDurationMs !== undefined && !number(draft.timerDurationMs, 300000)
+    || draft.timerWindow !== undefined && !text(draft.timerWindow)
+    || draft.finalizationMs !== undefined && !number(draft.finalizationMs, 15000)) return false;
   if (!oneOf(post.status, ['waiting', 'fetching', 'review', 'ready', 'live', 'error']) || !text(post.matchId, 100) || ![post.source, post.baselineSource].every(item => oneOf(item, ['fixture', 'match-v5', 'tournament', 'lcu-provisional', 'manual'])) || ![post.confidence, post.baselineConfidence].every(item => oneOf(item, ['unverified', 'low', 'medium', 'high'])) || !nullableText(post.lastSyncedAt) || !postData(post.data) || !postData(post.baseline) || ![post.overrideFields, post.missingFields, post.baselineMissingFields].every(fields) || !strings(post.warnings)) return false;
   if (typeof lcu.connected !== 'boolean' || !text(lcu.message) || ![lcu.lastSeenAt, lcu.lastPayloadAt, lcu.sessionId, lcu.gameflowPhase].every(nullableText) || !oneOf(lcu.feed, ['offline', 'idle', 'champ-select', 'unresolved']) || !oneOf(lcu.sessionKind, ['player', 'spectator', 'unknown']) || !strings(lcu.warnings)) return false;
   if (value.events.length > 80 || !value.events.every(item => record(item) && [item.id, item.at, item.label].every(s => text(s)) && oneOf(item.source, ['mock', 'manual', 'lcu']) && number(item.revision, Number.MAX_SAFE_INTEGER, 1))) return false;
@@ -27,6 +30,7 @@ export function isRuntimeState(value: unknown): value is BroadcastState {
     if (!record(value.match.teams?.[side]) || !record(value.draft.teams?.[side]) || !record(value.postMatch.data?.teams?.[side])) return false;
     if (![value.match.teams[side].players, value.draft.teams[side].picks, value.draft.teams[side].bans, value.postMatch.data.teams[side].players].every(items => Array.isArray(items) && items.length === 5)) return false;
     const team = match.teams[side]; const draftTeam = draft.teams[side];
+    if (draftTeam.banLocked !== undefined && !five(draftTeam.banLocked, item => typeof item === 'boolean')) return false;
     if (team.side !== side || !text(team.name, 28) || !text(team.code, 28) || typeof team.color !== 'string' || !/^#[a-fA-F0-9]{6}$/.test(team.color) || !text(team.logoUrl, 240) || !/^$|^(\/teams\/|\/team-uploads\/)[A-Za-z0-9_.% -]+\.(png|jpe?g|webp)$/.test(team.logoUrl) || !number(team.score, Math.ceil(match.bestOf / 2)) || !five(team.players, item => text(item, 24)) || !five(draftTeam.picks, p => record(p) && champion(p.championId) && typeof p.locked === 'boolean') || !five(draftTeam.bans, champion)) return false;
   }
   return true;

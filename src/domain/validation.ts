@@ -27,12 +27,12 @@ const player = object({ player: text(24), championId: champion, ...Object.fromEn
 const postTeam = object({ ...Object.fromEntries(teamMetrics.map(metric => [metric, integer()])), players: five(player) });
 export const postDataSchema = object({ winner: side, durationSeconds: integer(14400), earlyObjective: choices(['voidGrubs', 'riftHeralds']), teams: object({ blue: postTeam, red: postTeam }) });
 const matchTeam = object({ side, code: text(28), name: text(28), color, logoUrl: logo, score: integer(3), players: five(text(24)) });
-const draftTeam = object({ picks: five(object({ championId: champion, locked: Type.Boolean() })), bans: five(champion) });
+const draftTeam = object({ picks: five(object({ championId: champion, locked: Type.Boolean() })), bans: five(champion), banLocked: Type.Optional(five(Type.Boolean())) });
 export const stateSchema = object({
   schemaVersion: Type.Literal(2), serverInstanceId: Type.String(), outputOwner: choices(['operator', 'lcu']), storageWarning: nullableText,
   revision: integer(Number.MAX_SAFE_INTEGER, 1), source, lifecycle: choices(['idle', 'draft', 'in-game', 'post-match']), activeOutput: output,
   match: object({ matchName: text(40), gameLabel: text(40), patch: text(40), bestOf: choices([1, 3, 5]), teams: object({ blue: matchTeam, red: matchTeam }) }),
-  draft: object({ phase, timerMs: integer(300000), timerRunning: Type.Boolean(), activeSide: side, autoSync: Type.Boolean(), manualOverride: Type.Boolean(), teams: object({ blue: draftTeam, red: draftTeam }) }),
+  draft: object({ phase, finalizationMs: Type.Optional(integer(15000)), timerMs: integer(300000), timerDurationMs: Type.Optional(integer(300000)), timerWindow: Type.Optional(Type.String()), timerRunning: Type.Boolean(), activeSide: side, autoSync: Type.Boolean(), manualOverride: Type.Boolean(), teams: object({ blue: draftTeam, red: draftTeam }) }),
   postMatch: object({ status: choices(['waiting', 'fetching', 'review', 'ready', 'live', 'error']), matchId: text(100), source: dataSource, baselineSource: dataSource, lastSyncedAt: nullableText, confidence, baselineConfidence: confidence, baseline: postDataSchema, data: postDataSchema, overrideFields: fieldList, warnings: Type.Array(Type.String()), missingFields: fieldList, baselineMissingFields: fieldList }),
   lcu: object({ connected: Type.Boolean(), message: Type.String(), lastSeenAt: nullableText, feed: choices(['offline', 'idle', 'champ-select', 'unresolved']), gameflowPhase: nullableText, sessionKind: choices(['player', 'spectator', 'unknown']), sessionId: nullableText, lastPayloadAt: nullableText, warnings: Type.Array(Type.String()) }),
   events: Type.Array(object({ id: Type.String(), at: Type.String(), source, label: Type.String(), revision: integer(Number.MAX_SAFE_INTEGER, 1) }), { maxItems: 80 }),
@@ -45,7 +45,7 @@ export const commandSchema = Type.Union([
   command('SET_SCORE', { side, value: integer(3) }), command('SET_BEST_OF', { value: choices([1, 3, 5]) }),
   command('SET_PLAYER', { side, index: integer(4), value: text(24) }),
   command('SET_PICK', { side, index: integer(4), championId: champion, locked: Type.Optional(Type.Boolean()) }),
-  command('SET_BAN', { side, index: integer(4), championId: champion }),
+  command('SET_BAN', { side, index: integer(4), championId: champion, locked: Type.Optional(Type.Boolean()) }),
   command('SET_PHASE', { phase, activeSide: Type.Optional(side) }), command('SET_TIMER', { timerMs: integer(300000) }),
   ...['SET_AUTO_SYNC', 'SET_OVERRIDE', 'SET_OVERLAY_VISIBLE', 'POST_MATCH_SET_READY'].map(type => command(type, { value: Type.Boolean() })),
   command('SET_OUTPUT', { output }), command('POST_MATCH_SET_WINNER', { side }), command('POST_MATCH_SET_DURATION', { seconds: integer(14400) }),

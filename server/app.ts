@@ -10,6 +10,7 @@ import { DomainError, validateCommand } from '../src/domain/validation';
 import { StateManager } from './state-manager';
 import { MAX_TEAM_LOGO_BYTES, buildTeamLogoFilename, detectTeamLogoFormat } from './team-logo-assets';
 import { fetchMatchV5 } from './post-match/match-v5';
+import packageInfo from '../package.json';
 
 export async function createApp(options: { dataDir: string; logoDir?: string; port?: number; apiKey?: string; regionalRoute?: string; fetchImpl?: typeof fetch; logger?: boolean; timeoutMs?: number }) {
   const port = options.port ?? 4174;
@@ -47,7 +48,7 @@ export async function createApp(options: { dataDir: string; logoDir?: string; po
   const unsubscribe = manager.subscribe(state => send({ type: 'state', state }));
   const heartbeat = setInterval(() => send({ type: 'heartbeat', serverInstanceId: manager.instanceId, revision: manager.getState().revision }), 1000); heartbeat.unref();
   app.get('/api/control-session', async (_request, reply) => reply.header('cache-control', 'no-store').send({ token, serverInstanceId: manager.instanceId }));
-  app.get('/api/health', async () => ({ app: 'virtualhud-lol', version: '1.2.0', ok: true, revision: manager.getState().revision, storageWarning: manager.getState().storageWarning, lcu: manager.getState().lcu }));
+  app.get('/api/health', async () => ({ app: 'virtualhud-lol', version: packageInfo.version, ok: true, revision: manager.getState().revision, storageWarning: manager.getState().storageWarning, lcu: manager.getState().lcu }));
   app.get('/api/state', async (_request, reply) => reply.header('cache-control', 'no-store').send(manager.getState()));
   app.get('/api/lcu/status', async () => manager.getState().lcu);
   app.get('/api/post-match', async () => manager.getState().postMatch);

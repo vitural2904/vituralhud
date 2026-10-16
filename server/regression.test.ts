@@ -8,6 +8,7 @@ import { StateManager, migrateSavedState, type StorageStage } from './state-mana
 import { createInitialState, reduceDraft } from '../src/domain/state';
 import { numericPostFields } from '../src/domain/fields';
 import type { BroadcastCommand } from '../src/domain/types';
+import packageInfo from '../package.json';
 
 const cleanups: (() => Promise<unknown>)[] = [];
 afterEach(async () => { for (const cleanup of cleanups.splice(0).reverse()) await cleanup(); });
@@ -24,6 +25,13 @@ async function api(options: Partial<Parameters<typeof createApp>[0]> = {}) {
 const validRiot = { metadata: { matchId: 'VN2_123' }, info: { gameVersion: '16.16.1', gameDuration: 1000, participants: [{ teamId: 100, championId: 62 }, { teamId: 200, championName: 'annie' }], teams: [{ teamId: 100, win: true }, { teamId: 200, win: false }] } };
 
 describe('F01/F11 API validation and access', () => {
+  it('reports the package release version accepted by START.cmd', async () => {
+    const { app, headers } = await api();
+    const response = await app.inject({ url: '/api/health', headers });
+    expect(response.statusCode).toBe(200);
+    expect(response.json().version).toBe(packageInfo.version);
+    expect(response.json()).toMatchObject({ app: 'virtualhud-lol', ok: true });
+  });
   it('closes open WebSockets promptly during shutdown', async () => {
     const { app } = await createApp({ dataDir: await directory(), port: 4192 });
     cleanups.push(() => app.close()); await app.listen({ host: '127.0.0.1', port: 4192 });

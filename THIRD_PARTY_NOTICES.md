@@ -6,6 +6,13 @@ It does not replace third-party licenses or rights.
 
 ## Fonts
 
+Unbounded (NaN / Unbounded contributors) and Archivo (Omnibus-Type)
+are distributed under the SIL Open Font License 1.1.
+Full Vietnamese font data is bundled locally for OBS. No external font service is needed.
+
+See `public/fonts/unbounded/OFL.txt` and `public/fonts/archivo/OFL.txt`.
+Sources and validation: `docs/research/overlay-fonts.md`.
+
 Anybody is distributed under the SIL Open Font License 1.1.
 
 See `public/fonts/anybody/OFL.txt`.

@@ -203,6 +203,7 @@ export function normalizeChampSelectSession(
     blue: Array.from({ length: 5 }, () => null),
     red: Array.from({ length: 5 }, () => null),
   };
+  const banLocked: Record<Side, boolean[]> = { blue: Array(5).fill(false), red: Array(5).fill(false) };
   const cellMap = new Map<number, { side: Side; index: number }>();
   for (const side of sides) {
     resolution.teams[side].forEach((participant, index) => {
@@ -230,6 +231,7 @@ export function normalizeChampSelectSession(
     }
     if (action.type === "ban" && banIndex[actor.side] < 5) {
       bans[actor.side][banIndex[actor.side]] = championId;
+      banLocked[actor.side][banIndex[actor.side]] = action.completed;
       banIndex[actor.side] += 1;
     }
   }
@@ -258,8 +260,8 @@ export function normalizeChampSelectSession(
     timerRunning: phase !== "waiting" && phase !== "complete" && timerMs > 0,
     activeSide,
     teams: {
-      blue: { picks: picks.blue, bans: bans.blue },
-      red: { picks: picks.red, bans: bans.red },
+      blue: { picks: picks.blue, bans: bans.blue, banLocked: banLocked.blue },
+      red: { picks: picks.red, bans: bans.red, banLocked: banLocked.red },
     },
   };
   return { snapshot, sessionKind: resolution.sessionKind, warnings: [...new Set(warnings)] };

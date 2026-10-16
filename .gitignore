@@ -15,7 +15,7 @@ output/
 Thumbs.db
 public/qa/
 public/fonts/lens-grotesk/*.woff2
-design/
+/design/
 .openai/
 UX_AUDIT.md
 design-qa.md

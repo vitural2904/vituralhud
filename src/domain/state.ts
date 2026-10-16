@@ -65,9 +65,10 @@ const addOverride = (state: BroadcastState, field: string) => {
 
 export function reconcileOutput(state: BroadcastState) {
   if (state.outputOwner === 'lcu') {
-    state.activeOutput = state.draft.autoSync && !state.draft.manualOverride && state.lcu.connected
-      && state.lcu.feed === 'champ-select' && Boolean(state.lcu.sessionId && state.lcu.lastPayloadAt)
-      && !['waiting', 'complete'].includes(state.draft.phase) ? 'draft' : 'none';
+    const liveDraft = state.lcu.connected && state.lcu.feed === 'champ-select'
+      && Boolean(state.lcu.sessionId && state.lcu.lastPayloadAt) && !['waiting', 'complete'].includes(state.draft.phase);
+    state.activeOutput = state.draft.autoSync && !state.draft.manualOverride
+      && (liveDraft || (state.draft.finalizationMs ?? 0) > 0) ? 'draft' : 'none';
   }
   if (state.activeOutput !== 'post-match' && state.postMatch.status === 'live') state.postMatch.status = 'ready';
   if (state.activeOutput === 'post-match') state.lifecycle = 'post-match';
@@ -87,6 +88,7 @@ const assignField = (data: PostMatchData, field: string, value: unknown) => {
 export function reduceDraft(state: BroadcastState, command: BroadcastCommand): BroadcastState {
   validateCommand(command);
   const next = structuredClone(state);
+  if (['SET_OUTPUT', 'SET_OVERLAY_VISIBLE', 'RESUME_AUTO_OUTPUT', 'SET_OVERRIDE', 'SET_AUTO_SYNC', 'SET_PHASE'].includes(command.type)) next.draft.finalizationMs = 0;
   const edit = (() => {
     switch (command.type) {
       case 'POST_MATCH_SET_WINNER': return ['winner', command.side] as const;
@@ -121,15 +123,26 @@ export function reduceDraft(state: BroadcastState, command: BroadcastCommand): B
   }
   if (command.type === "SET_PICK" && next.draft.teams[command.side].picks[command.index]) {
     next.draft.teams[command.side].picks[command.index].championId = command.championId;
-    next.draft.teams[command.side].picks[command.index].locked = command.locked ?? true;
+    next.draft.teams[command.side].picks[command.index].locked = Boolean(command.championId) && (command.locked ?? true);
   }
-  if (command.type === "SET_BAN" && command.index >= 0 && command.index < 5) next.draft.teams[command.side].bans[command.index] = command.championId;
+  if (command.type === "SET_BAN" && command.index >= 0 && command.index < 5) {
+    const team = next.draft.teams[command.side];
+    team.banLocked ??= team.bans.map(Boolean);
+    team.bans[command.index] = command.championId;
+    team.banLocked[command.index] = command.locked ?? Boolean(command.championId);
+  }
   if (command.type === "SET_PHASE") {
+    next.draft.timerWindow = `manual-phase:${state.revision + 1}`;
+    next.draft.timerDurationMs = next.draft.timerMs;
     next.draft.phase = command.phase;
     next.lifecycle = command.phase === "complete" ? "in-game" : "draft";
     if (command.activeSide) next.draft.activeSide = command.activeSide;
   }
-  if (command.type === "SET_TIMER") next.draft.timerMs = Math.max(0, Math.min(300_000, command.timerMs));
+  if (command.type === "SET_TIMER") {
+    next.draft.timerMs = Math.max(0, Math.min(300_000, command.timerMs));
+    next.draft.timerDurationMs = next.draft.timerMs;
+    next.draft.timerWindow = `manual-timer:${state.revision + 1}`;
+  }
   if (command.type === "TOGGLE_TIMER") next.draft.timerRunning = !next.draft.timerRunning && next.draft.timerMs > 0;
   if (command.type === "SET_AUTO_SYNC") next.draft.autoSync = command.value;
   if (command.type === "SET_OVERRIDE") {
@@ -289,6 +302,8 @@ export function reduceDraft(state: BroadcastState, command: BroadcastCommand): B
     next.draft.phase = phases[(phaseIndex + 1) % phases.length];
     next.draft.activeSide = next.draft.activeSide === "blue" ? "red" : "blue";
     next.draft.timerMs = next.draft.phase === "complete" ? 0 : 27_000;
+    next.draft.timerDurationMs = next.draft.timerMs;
+    next.draft.timerWindow = `demo:${state.revision + 1}`;
     next.draft.timerRunning = next.draft.phase !== "complete";
     next.lifecycle = next.draft.phase === "complete" ? "in-game" : "draft";
   }

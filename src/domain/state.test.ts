@@ -17,6 +17,21 @@ describe("broadcast reducer", () => {
     expect(state.draft.teams.blue.picks[0].championId).toBeNull();
   });
 
+  it('supports unconfirmed bans, confirms manual bans by default and clears their lock on removal', () => {
+    const state = createInitialState();
+    state.draft.teams.blue.bans[0] = 'Ahri'; // A saved state without lock metadata.
+    const hover = reduceDraft(state, { type: 'SET_BAN', side: 'blue', index: 1, championId: 'Ashe', locked: false });
+    expect(hover.draft.teams.blue.banLocked).toEqual([true, false, false, false, false]);
+    expect(state.draft.teams.blue.banLocked).toBeUndefined();
+    const locked = reduceDraft(hover, { type: 'SET_BAN', side: 'blue', index: 1, championId: 'Ashe' });
+    expect(locked.draft.teams.blue.banLocked?.[1]).toBe(true);
+    const cleared = reduceDraft(locked, { type: 'SET_BAN', side: 'blue', index: 1, championId: null });
+    expect(cleared.draft.teams.blue.banLocked?.[1]).toBe(false);
+    const skipped = reduceDraft(cleared, { type: 'SET_BAN', side: 'blue', index: 1, championId: null, locked: true });
+    expect(skipped.draft.teams.blue.bans[1]).toBeNull();
+    expect(skipped.draft.teams.blue.banLocked?.[1]).toBe(true);
+  });
+
   it("rejects unsafe timer and score values without mutation", () => {
     const state = createInitialState();
     expect(() => reduceDraft(state, { type: "SET_TIMER", timerMs: -100 })).toThrow();

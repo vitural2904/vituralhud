@@ -8,6 +8,43 @@ async function fixture(name: string) {
 }
 
 describe("LCU champ-select normalization", () => {
+  it.each(['pick', 'ban'])('keeps both teams visible in tournament spectator %s actions', type => {
+    const result = normalizeChampSelectSession({
+      isSpectating: true, localPlayerCellId: -1,
+      blueTeam: [{ cellId: 0 }], redTeam: [{ cellId: 5 }],
+      actions: [[
+        { type, actorCellId: 0, championId: 266, completed: false, isInProgress: true },
+        { type, actorCellId: 5, championId: 22, completed: false },
+      ]],
+    });
+    expect(result.sessionKind).toBe('spectator');
+    const blue = result.snapshot!.teams.blue, red = result.snapshot!.teams.red;
+    if (type === 'pick') {
+      expect(blue.picks[0]).toMatchObject({ championId: 'Aatrox', locked: false });
+      expect(red.picks[0]).toMatchObject({ championId: 'Ashe', locked: false });
+    } else {
+      expect(blue.bans[0]).toBe('Aatrox'); expect(blue.banLocked?.[0]).toBe(false);
+      expect(red.bans[0]).toBe('Ashe'); expect(red.banLocked?.[0]).toBe(false);
+    }
+  });
+  it('distinguishes hovered and completed bans without moving skipped or future slots', () => {
+    const raw = {
+      blueTeam: [{ cellId: 0 }], redTeam: [{ cellId: 5 }],
+      actions: [
+        [{ type: 'ban', actorCellId: 0, championId: 0, completed: true, isInProgress: false }],
+        [{ type: 'ban', actorCellId: 0, championId: 266, completed: false, isInProgress: true }],
+        [{ type: 'ban', actorCellId: 0, championId: 0, completed: false, isInProgress: false }],
+      ],
+    };
+    const hover = normalizeChampSelectSession(raw).snapshot!;
+    expect(hover.teams.blue.bans).toEqual([null, 'Aatrox', null, null, null]);
+    expect(hover.teams.blue.banLocked).toEqual([true, false, false, false, false]);
+    raw.actions[1][0].completed = true;
+    raw.actions[1][0].isInProgress = false;
+    const locked = normalizeChampSelectSession(raw).snapshot!;
+    expect(locked.teams.blue.bans).toEqual(hover.teams.blue.bans);
+    expect(locked.teams.blue.banLocked).toEqual([true, true, false, false, false]);
+  });
   it('F16 preserves a skipped ban slot before the next champion', () => {
     const result = normalizeChampSelectSession({ blueTeam: [{ cellId: 0 }], redTeam: [{ cellId: 5 }], actions: [[{ type: 'ban', actorCellId: 0, championId: 0, completed: true }], [{ type: 'ban', actorCellId: 0, championId: 266, completed: true }]] });
     expect(result.snapshot?.teams.blue.bans.slice(0, 2)).toEqual([null, 'Aatrox']);

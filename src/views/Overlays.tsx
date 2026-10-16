@@ -1,4 +1,8 @@
 import { motion } from 'motion/react';
+import '../overlay-type.css';
+import '../draft-overlay.css';
+import { DraftCountdown } from '../components/DraftCountdown';
+import { DraftArtwork, DraftSelectionVeil, DraftSwap, useDraftReducedMotion } from '../components/DraftMotion';
 import { Coin } from '@phosphor-icons/react/Coin';
 import { Check } from '@phosphor-icons/react/Check';
 import { CastleTurret } from '@phosphor-icons/react/CastleTurret';
@@ -13,42 +17,63 @@ import type { BroadcastState, Side, PostMatchOverviewMetric } from '../domain/ty
 const phaseDisplay = { waiting: { action: 'WAIT', round: 'MATCH' }, 'ban-1': { action: 'BAN', round: 'ROUND 1' }, 'pick-1': { action: 'PICK', round: 'ROUND 1' }, 'ban-2': { action: 'BAN', round: 'ROUND 2' }, 'pick-2': { action: 'PICK', round: 'ROUND 2' }, complete: { action: 'DRAFT', round: 'COMPLETE' } };
 const roleSlots = ['top', 'jungle', 'middle', 'bottom', 'utility'] as const;
 const postMatchMetricImages = { dragons: '/objectives/dragon.png', barons: '/objectives/baron.png', inhibitors: '/objectives/inhibitor.png', voidGrubs: '/objectives/void-grubs.png', riftHeralds: '/objectives/herald.png' } as Partial<Record<PostMatchOverviewMetric, string>>;
-const formatDraftTimer = (ms: number) => String(Math.ceil(ms / 1000)).padStart(2, "0");
 const formatClock = (seconds: number) => `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
 const formatCompact = (value: number) => value >= 1000 ? `${(value / 1000).toFixed(1)}K` : String(value);
 
 export function DraftOverlay({ state, visible, immediate = false }: { state: BroadcastState; visible: boolean; immediate?: boolean }) {
   const { draft, match } = state;
-  return <motion.main initial={false} animate={{ opacity: visible ? 1 : 0, y: visible ? 0 : 22 }} transition={{ duration: immediate ? 0 : visible ? 0.55 : 0.42, ease: [0.22, 1, 0.36, 1] }} className={`overlay-shell ${visible ? "is-visible" : "is-hidden"}`}>
+  const reduced = useDraftReducedMotion();
+  const drafting = visible && !['waiting', 'complete'].includes(draft.phase);
+  const turn = draft.phase === 'complete' ? 'complete' : draft.phase === 'waiting' ? 'waiting' : draft.activeSide;
+  return <motion.main initial={{ opacity: 0 }} animate={{ opacity: visible ? 1 : 0 }} transition={{ duration: immediate || reduced ? 0 : .2, ease: 'easeInOut' }} className={`overlay-shell ${visible ? "is-visible" : "is-hidden"}`} aria-hidden={!visible} data-draft-active={drafting}>
     <section className="broadcast-spine" aria-hidden={!visible} aria-label="Ban pick overlay">
-      <div className="ban-group ban-group--blue"><span className="ban-label">BANS</span>{draft.teams.blue.bans.map((id, i) => <div className="ban-tile" key={i}>{id ? <img src={championById[id]?.iconUrl} alt={championById[id]?.name ?? id} /> : <span>{i + 1}</span>}</div>)}</div>
-      <div className="ban-group ban-group--red"><span className="ban-label">BANS</span>{draft.teams.red.bans.map((id, i) => <div className="ban-tile" key={i}>{id ? <img src={championById[id]?.iconUrl} alt={championById[id]?.name ?? id} /> : <span>{i + 1}</span>}</div>)}</div>
+      <div className="draft-bans">{(['blue', 'red'] as const).map(side => <div className={`ban-group ban-group--${side}`} key={side} aria-label={`${side} bans`}>{draft.teams[side].bans.map((_, i) => <DraftBan key={i} state={state} side={side} index={i} drafting={drafting} />)}</div>)}</div>
+      <DraftCountdown draft={draft} visible={visible} />
       <div className="draft-board">
-        <div className="pick-row pick-row--blue">{draft.teams.blue.picks.map((slot, i) => <DraftPick key={i} state={state} side="blue" index={i} slot={slot} />)}</div>
+        <div className="pick-row pick-row--blue">{draft.teams.blue.picks.map((slot, i) => <DraftPick key={i} state={state} side="blue" index={i} slot={slot} drafting={drafting} />)}</div>
         <div className="match-core">
-          <div className="center-meta"><strong>{match.gameLabel}</strong><span>PATCH {match.patch}</span><div className="phase"><b>{phaseDisplay[draft.phase].action}</b><i /><b>{phaseDisplay[draft.phase].round}</b></div></div>
-          <div className="center-identities"><TeamIdentity state={state} side="blue" /><div className={`timer timer--${draft.activeSide}`}>{formatDraftTimer(draft.timerMs)}</div><TeamIdentity state={state} side="red" /></div>
+          <div className="center-identities"><TeamIdentity state={state} side="blue" /><span className="draft-turn" aria-label={draft.phase === 'complete' ? 'Draft hoàn tất' : `${draft.activeSide} ${phaseDisplay[draft.phase].action}`} data-side={draft.activeSide}><DraftSwap value={turn}>{draft.phase === 'complete' ? <Check weight="bold" /> : draft.phase === 'waiting' ? null : draft.activeSide === 'blue' ? '◀' : '▶'}</DraftSwap></span><TeamIdentity state={state} side="red" /></div>
+          <div className="draft-match-label" title={match.matchName || match.gameLabel}><DraftSwap value={match.gameLabel}>{match.gameLabel}</DraftSwap><DraftSwap value={draft.phase}>{draft.phase === 'complete' ? 'LOCKED IN' : `${phaseDisplay[draft.phase].action} ${phaseDisplay[draft.phase].round.replace('ROUND ', '')}`}</DraftSwap></div>
         </div>
-        <div className="pick-row pick-row--red">{draft.teams.red.picks.map((slot, i) => <DraftPick key={i} state={state} side="red" index={i} slot={slot} />)}</div>
+        <div className="pick-row pick-row--red">{draft.teams.red.picks.map((slot, i) => <DraftPick key={i} state={state} side="red" index={i} slot={slot} drafting={drafting} />)}</div>
       </div>
-      <div className="team-footers"><div className="team-footer team-footer--blue" style={{ "--team-color": match.teams.blue.color } as React.CSSProperties}><strong>{match.teams.blue.name}</strong></div><div className="footer-core" /><div className="team-footer team-footer--red" style={{ "--team-color": match.teams.red.color } as React.CSSProperties}><strong>{match.teams.red.name}</strong></div></div>
     </section>
   </motion.main>;
 }
 
-function DraftPick({ state, side, index, slot }: { state: BroadcastState; side: Side; index: number; slot: BroadcastState["draft"]["teams"][Side]["picks"][number] }) {
+function DraftBan({ state, side, index, drafting }: { state: BroadcastState; side: Side; index: number; drafting: boolean }) {
+  const team = state.draft.teams[side];
+  const id = team.bans[index];
+  const champion = id ? championById[id] : undefined;
+  const locked = team.banLocked?.[index] ?? Boolean(id);
+  const selection = id ? locked ? 'locked' : 'hover' : locked ? 'skipped' : 'empty';
+  const status = id ? locked ? 'Đã khóa ban' : 'Chưa khóa ban' : locked ? 'Bỏ lượt ban' : 'Chưa chọn';
+  return <div className="ban-tile" data-selection={selection} aria-label={`${side} · Ban ${index + 1} · ${champion?.name ?? id ?? '—'} · ${status}`}>
+    <DraftArtwork src={champion?.iconUrl} alt={champion?.name ?? id ?? ''} fallback={selection === 'skipped' ? <span className="ban-skip" aria-hidden="true">—</span> : null} fallbackKey={selection === 'skipped' ? 'skipped' : 'empty'} />
+    <DraftSelectionVeil active={drafting && selection === 'hover'} />
+  </div>;
+}
+
+function DraftPick({ state, side, index, slot, drafting }: { state: BroadcastState; side: Side; index: number; slot: BroadcastState["draft"]["teams"][Side]["picks"][number]; drafting: boolean }) {
   const champion = slot.championId ? championById[slot.championId] : undefined;
-  const active = state.draft.activeSide === side && !slot.locked;
-  return <article className={`pick-card pick-card--${side} ${active ? "is-active" : ""}`}>
-    {champion ? <img src={champion.loadingUrl} alt={champion.name} /> : <div className="pick-empty">P{index + 1}</div>}<div className="pick-shade" />
-    <div className="pick-meta"><span className="pick-champion">{champion?.name ?? "OPEN SLOT"}</span><div className="pick-player-line"><img className="pick-role" src={`/roles/${roleSlots[index]}.svg`} alt="" /><span className="pick-player">{state.match.teams[side].players[index] || "—"}</span>{slot.locked && <Check weight="bold" />}</div></div>
+  const player = state.match.teams[side].players[index] || '—';
+  const selection = slot.championId ? slot.locked ? 'locked' : 'hover' : 'empty';
+  return <article className={`pick-card pick-card--${side}`} data-selection={selection} aria-label={`${player} · ${roleSlots[index]} · ${champion?.name ?? 'Chưa chọn'}${slot.championId ? slot.locked ? ' · Đã khóa' : ' · Chưa khóa' : ''}`}>
+    <DraftArtwork src={champion?.loadingUrl} alt={champion?.name ?? ''} fallback={<span className="pick-empty">P{index + 1}</span>} /><div className="pick-shade" />
+    <DraftSelectionVeil active={drafting && selection === 'hover'} />
+    <div className="pick-meta"><div className="pick-player-line"><DraftSwap className="pick-player" title={player} value={player}>{player}</DraftSwap></div><img className="pick-role" src={`/roles/${roleSlots[index]}.svg`} alt={roleSlots[index]} /></div>
   </article>;
 }
 
 function TeamIdentity({ state, side }: { state: BroadcastState; side: Side }) {
   const team = state.match.teams[side];
   const needed = Math.ceil(state.match.bestOf / 2);
-  return <div className="team-identity"><span className={`score-pips score-pips--${side}`} style={{ "--score-color": team.color } as React.CSSProperties}>{Array.from({ length: needed }, (_, i) => <i className={i < team.score ? "is-won" : ""} key={i} />)}</span>{team.logoUrl ? <img className="center-logo" src={team.logoUrl} alt={`Logo ${team.name}`} /> : <span className="center-logo logo-placeholder" />}</div>;
+  return <div className={`team-identity team-identity--${side}`} title={team.name}>
+    <span className={`score-pips score-pips--${side}`} aria-label={`${team.name}: ${team.score} trận thắng`}><DraftSwap value={String(needed)}>{Array.from({ length: needed }, (_, i) => <i className={i < team.score ? "is-won" : ""} key={i} />)}</DraftSwap></span>
+    <span className="draft-side-label">{side.toUpperCase()} SIDE</span>
+    <DraftArtwork className="center-logo" src={team.logoUrl || undefined} alt={`Logo ${team.name}`} fallback={<span className="center-monogram" aria-hidden="true">{team.code.slice(0, 2)}</span>} fallbackKey={team.code} />
+    <DraftSwap className="center-team-code" value={team.code}>{team.code}</DraftSwap>
+  </div>;
 }
 
 export function PostMatchOverlay({ state, visible, immediate = false }: { state: BroadcastState; visible: boolean; immediate?: boolean }) {

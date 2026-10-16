@@ -1,0 +1,66 @@
+body:has(.overlay-shell), html:has(.overlay-shell), #root:has(.overlay-shell) { background: transparent; overflow: hidden; }
+.overlay-shell { position: relative; width: 100vw; height: 100vh; overflow: hidden; background: transparent; pointer-events: none; }
+.program-output { position: fixed; inset: 0; background: transparent; }
+.program-output > :is(.overlay-shell, .post-overlay) { position: absolute; inset: 0; }
+.program-output > .post-overlay { transition: none; visibility: visible; }
+.overlay-shell .draft-swap { display: inline-grid; min-width: 0; max-width: 100%; vertical-align: top; }
+.overlay-shell .draft-swap-layer { grid-area: 1 / 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: inherit; }
+.overlay-shell .draft-artwork > .draft-swap { display: grid; width: 100%; height: 100%; }
+.overlay-shell :is(.pick-card, .ban-tile) > .draft-artwork { position: absolute; inset: 0; }
+.overlay-shell .broadcast-spine {
+  --draft-unit: calc(100vw / 1920);
+  --draft-card-height: calc(250 * var(--draft-unit));
+  position: absolute;
+  inset: auto 0 0;
+  height: auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: transparent;
+}
+.overlay-shell .draft-bans { height: calc(78 * var(--draft-unit)); display: flex; justify-content: space-between; column-gap: calc(320 * var(--draft-unit)); }
+.overlay-shell .ban-group { flex: 0 0 auto; display: flex; align-items: stretch; gap: calc(5 * var(--draft-unit)); padding: calc(5 * var(--draft-unit)); background: #050607; }
+.overlay-shell .ban-group--red { flex-direction: row-reverse; }
+.overlay-shell .ban-tile { position: relative; width: calc(68 * var(--draft-unit)); height: calc(68 * var(--draft-unit)); overflow: hidden; background: #111519; border: 1px solid #30363c; }
+.overlay-shell .ban-tile img { width: 100%; height: 100%; display: block; object-fit: cover; filter: saturate(.7) grayscale(0) brightness(1); transition: filter 180ms ease; }
+.overlay-shell .ban-tile[data-selection="locked"] img { filter: saturate(.7) grayscale(1) brightness(.8); }
+.overlay-shell .ban-skip { display: grid; place-items: center; height: 100%; color: #88929b; font-size: calc(28 * var(--draft-unit)); }
+.overlay-shell .draft-countdown { position: relative; width: 100%; height: calc(8 * var(--draft-unit)); flex: 0 0 auto; background: transparent; }
+.overlay-shell .draft-countdown__bar { position: absolute; inset: 0; background: #f4f5f5; transform-origin: 50% 50%; will-change: transform; transition: opacity 160ms ease; }
+.overlay-shell .draft-countdown[data-running="false"] .draft-countdown__bar { opacity: .6; }
+.overlay-shell .draft-board { height: var(--draft-card-height); min-height: 0; flex: 0 0 var(--draft-card-height); display: grid; grid-template-columns: minmax(0, 1fr) calc(320 * var(--draft-unit)) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); background: #030405; }
+.overlay-shell .pick-row { min-width: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.overlay-shell .pick-card { position: relative; min-width: 0; overflow: hidden; background: #101418; border-right: 1px solid #315b70; }
+.overlay-shell .pick-card--red { border-right: 0; border-left: 1px solid #315b70; }
+.overlay-shell .pick-card .draft-artwork img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 12%; filter: saturate(.92) contrast(1.04); }
+.overlay-shell .pick-shade { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(0,0,0,.64), transparent 42%), linear-gradient(0deg, rgba(0,0,0,.5), transparent 45%); }
+.overlay-shell .pick-meta { position: absolute; inset: 0; z-index: 2; }
+.overlay-shell .pick-player-line { position: absolute; left: calc(40 * var(--draft-unit)); bottom: calc(16 * var(--draft-unit)); width: calc(var(--draft-card-height) - 32 * var(--draft-unit)); height: calc(30 * var(--draft-unit)); transform: rotate(-90deg); transform-origin: left bottom; }
+.overlay-shell .pick-player { display: grid; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 650 calc(24 * var(--draft-unit))/1.25 var(--broadcast-text); font-stretch: 100%; color: #fff; letter-spacing: 0; text-shadow: 0 1px 3px #000; }
+.overlay-shell .pick-role { position: absolute; left: calc(49 * var(--draft-unit)); bottom: calc(18 * var(--draft-unit)); width: calc(32 * var(--draft-unit)); height: calc(32 * var(--draft-unit)); object-fit: contain; filter: grayscale(1) brightness(2); }
+.overlay-shell .pick-empty { height: 100%; display: grid; place-items: center; color: #596168; font: 500 calc(24 * var(--draft-unit))/1 var(--broadcast-text); }
+.overlay-shell .pick-card[data-selection="hover"] > .draft-artwork { opacity: .78; }
+.overlay-shell .pick-card > .draft-artwork { transition: opacity 180ms ease; }
+.overlay-shell .draft-selection-veil { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+.overlay-shell .draft-selection-breathe { position: absolute; inset: 0; border: 2px solid #d3e9f1; background: rgba(220,239,247,.1); animation: draft-selection-breathe 1.8s cubic-bezier(.45,0,.55,1) infinite; }
+@keyframes draft-selection-breathe { 0%, 100% { opacity: .28; } 50% { opacity: .8; } }
+@media (prefers-reduced-motion: reduce) {
+  .overlay-shell .draft-selection-breathe { animation: none; opacity: .6; }
+  .overlay-shell :is(.pick-card > .draft-artwork, .ban-tile img, .score-pips i, .draft-countdown__bar) { transition: none; }
+}
+.overlay-shell .match-core { min-width: 0; display: grid; grid-template-rows: minmax(0, 1fr) calc(32 * var(--draft-unit)); background: #030405; border-inline: 1px solid #315b70; color: #fff; }
+.overlay-shell .center-identities { min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) calc(28 * var(--draft-unit)) minmax(0, 1fr); align-items: stretch; padding: calc(16 * var(--draft-unit)) calc(12 * var(--draft-unit)) calc(8 * var(--draft-unit)); }
+.overlay-shell .team-identity { min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: space-between; gap: calc(6 * var(--draft-unit)); }
+.overlay-shell .score-pips { display: flex; justify-content: center; width: 100%; height: calc(12 * var(--draft-unit)); }
+.overlay-shell .score-pips .draft-swap-layer { display: flex; justify-content: center; gap: calc(4 * var(--draft-unit)); }
+.overlay-shell .score-pips i { display: block; width: calc(25 * var(--draft-unit)); height: calc(12 * var(--draft-unit)); border: 1px solid #e1e5e7; background: transparent; transition: background-color 180ms ease; }
+.overlay-shell .score-pips i.is-won { background: #fff; }
+.overlay-shell .draft-side-label { font: 700 calc(15 * var(--draft-unit))/1.1 var(--broadcast-text); font-stretch: 100%; white-space: nowrap; }
+.overlay-shell .center-logo, .overlay-shell .center-monogram { display: block; width: calc(78 * var(--draft-unit)); height: calc(78 * var(--draft-unit)); object-fit: contain; }
+.overlay-shell .center-logo img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.overlay-shell .center-monogram { display: grid; place-items: center; font: 650 calc(32 * var(--draft-unit))/1 var(--broadcast-display); }
+.overlay-shell .center-team-code { width: 100%; max-width: 100%; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 700 calc(27 * var(--draft-unit))/1.2 var(--broadcast-text); font-stretch: 112%; }
+.overlay-shell .draft-turn { display: grid; align-content: start; justify-items: center; padding-top: calc(27 * var(--draft-unit)); font: 600 calc(16 * var(--draft-unit))/1 var(--broadcast-text); }
+.overlay-shell .draft-turn svg { width: calc(18 * var(--draft-unit)); height: calc(18 * var(--draft-unit)); }
+.overlay-shell .draft-match-label { display: flex; align-items: center; justify-content: space-between; gap: calc(10 * var(--draft-unit)); padding-inline: calc(15 * var(--draft-unit)); overflow: hidden; background: #e9eeee; color: #060809; font: 700 calc(15 * var(--draft-unit))/1 var(--broadcast-text); }
+.overlay-shell .draft-match-label span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

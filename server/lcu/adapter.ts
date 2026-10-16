@@ -101,7 +101,12 @@ export function startLcuAdapter(manager: StateManager) {
     if (stopped) return;
     try {
       if (!client) {
-        const lockfile = await readLcuLockfile();
+        const lockfile = await readLcuLockfile(async candidate => {
+          try {
+            const phase = await new LcuHttpClient(candidate).getJson<unknown>(GAMEFLOW_ENDPOINT);
+            return typeof phase === 'string';
+          } catch (error) { return isLcuNotFound(error); }
+        });
         if (!lockfile) throw new Error("Chưa thấy League Client");
         client = new LcuHttpClient(lockfile);
       }

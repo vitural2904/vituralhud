@@ -44,7 +44,7 @@ async function launch() {
   try { await health(); running = true; } catch (error) { if (error.message.startsWith('Cổng')) throw error; }
   if (!running) {
     const log = openSync(path.join(root, '.codex-local', 'server.log'), 'a');
-    const child = spawn(process.execPath, ['--import', 'tsx', 'server/index.ts'], { cwd: root, detached: true, stdio: ['ignore', log, log], windowsHide: true });
+    const child = spawn(process.execPath, ['--import', 'tsx', 'scripts/supervise.mjs'], { cwd: root, detached: true, stdio: ['ignore', log, log], windowsHide: true });
     child.once('error', error => console.error(error.message)); child.unref(); closeSync(log);
     const deadline = Date.now() + 20000;
     while (true) {

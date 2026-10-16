@@ -36,6 +36,8 @@ export class LcuHttpClient {
         },
         (response) => {
           let body = "";
+          response.on("error", () => reject(new LcuHttpError("LCU ngắt phản hồi", null, endpoint)));
+          response.on("aborted", () => reject(new LcuHttpError("LCU ngắt phản hồi", null, endpoint)));
           response.setEncoding("utf8");
           response.on("data", (chunk) => (body += chunk));
           response.on("end", () => {

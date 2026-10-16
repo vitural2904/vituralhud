@@ -16,4 +16,21 @@ describe('F14 state ordering and shape', () => {
     const broken = state(1) as any; broken.postMatch.data.teams.blue.players[0].kills = '0'; expect(isRuntimeState(broken)).toBe(false);
     broken.postMatch.data.teams.blue.players[0].kills = 0; broken.draft.teams.blue.picks[0] = null; expect(isRuntimeState(broken)).toBe(false);
   });
+  it('validates optional transition metadata and keeps the last good revision on bad updates', () => {
+    const channel = new StateChannel();
+    const valid = state(2);
+    valid.draft.timerDurationMs = 30000; valid.draft.timerWindow = 'pick:1'; valid.draft.finalizationMs = 15000;
+    valid.draft.teams.red.banLocked = [true, false, false, false, false];
+    expect(channel.receive(valid)).toBe(valid);
+    for (const patch of [{ timerDurationMs: -1 }, { timerDurationMs: '30000' }, { timerWindow: 123 }, { finalizationMs: 15001 }]) {
+      const bad = state(3); Object.assign(bad.draft, patch);
+      expect(channel.receive(bad)).toBeUndefined();
+    }
+    for (const locks of [[true], [true, false, 'false', false, false], null]) {
+      const bad = state(3) as any; bad.draft.teams.red.banLocked = locks;
+      expect(channel.receive(bad)).toBeUndefined();
+    }
+    expect(channel.current).toBe(valid);
+    expect(isRuntimeState(state(1))).toBe(true); // Older schema-2 states remain usable.
+  });
 });
