@@ -7,7 +7,7 @@ import sharp from 'sharp';
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 export async function updateChampionAssets({ root = path.resolve(import.meta.dirname, '..'), version, force = false, fetchImpl = fetch } = {}) {
   const request = async url => {
-    const response = await fetchImpl(url, { signal: AbortSignal.timeout(10000), headers: { 'user-agent': 'VirtualHUD-AssetFetcher/1.2' } });
+    const response = await fetchImpl(url, { signal: AbortSignal.timeout(10000), headers: { 'user-agent': 'VituralHUD-AssetFetcher/1.2' } });
     if (!response.ok) throw new Error(`Asset HTTP ${response.status}: ${url}`);
     return response;
   };

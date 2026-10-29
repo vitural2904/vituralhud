@@ -10,12 +10,16 @@ import { DomainError, validateCommand } from '../src/domain/validation';
 import { StateManager } from './state-manager';
 import { MAX_TEAM_LOGO_BYTES, buildTeamLogoFilename, detectTeamLogoFormat } from './team-logo-assets';
 import { fetchMatchV5 } from './post-match/match-v5';
+import { registerSponsorRoutes } from './sponsors';
 import packageInfo from '../package.json';
+import { startIngameFeed } from './ingame';
+import { registerIngameSettings } from './ingame-settings';
 
-export async function createApp(options: { dataDir: string; logoDir?: string; port?: number; apiKey?: string; regionalRoute?: string; fetchImpl?: typeof fetch; logger?: boolean; timeoutMs?: number }) {
+export async function createApp(options: { dataDir: string; logoDir?: string; port?: number; apiKey?: string; regionalRoute?: string; fetchImpl?: typeof fetch; logger?: boolean; timeoutMs?: number; readIngame?: () => Promise<unknown> }) {
   const port = options.port ?? 4174;
   const app = Fastify({ forceCloseConnections: true, logger: options.logger ? { level: process.env.LOG_LEVEL ?? 'info', redact: ['req.headers.x-virtualhud-control', 'req.headers.authorization'] } : false, ajv: { customOptions: { coerceTypes: false, removeAdditional: false } } });
   const manager = new StateManager(options.dataDir); await manager.init();
+  const ingame = startIngameFeed(options.readIngame);
   const logoRoot = path.resolve(options.logoDir ?? path.join(options.dataDir, 'team-logos')); await mkdir(logoRoot, { recursive: true });
   const token = randomBytes(32).toString('hex');
   const hosts = new Set(['127.0.0.1', 'localhost', '[::1]'].flatMap(host => [`${host}:${port}`, `${host}:4173`]));
@@ -43,6 +47,8 @@ export async function createApp(options: { dataDir: string; logoDir?: string; po
   } });
   await app.register(fastifyStatic, { root: logoRoot, prefix: '/team-uploads/', decorateReply: false });
   app.addContentTypeParser(/^image\/(?:png|jpeg|webp)$/i, { parseAs: 'buffer', bodyLimit: MAX_TEAM_LOGO_BYTES }, (_request, body, done) => done(null, body));
+  await registerSponsorRoutes(app, options.dataDir);
+  await registerIngameSettings(app, options.dataDir);
   const clients = new Set<{ send: (data: string) => void; readyState: number; close: () => void }>();
   const send = (payload: unknown) => { const json = JSON.stringify(payload); for (const client of clients) if (client.readyState === 1) { try { client.send(json); } catch { clients.delete(client); } } };
   const unsubscribe = manager.subscribe(state => send({ type: 'state', state }));
@@ -51,6 +57,7 @@ export async function createApp(options: { dataDir: string; logoDir?: string; po
   app.get('/api/health', async () => ({ app: 'virtualhud-lol', version: packageInfo.version, ok: true, revision: manager.getState().revision, storageWarning: manager.getState().storageWarning, lcu: manager.getState().lcu }));
   app.get('/api/state', async (_request, reply) => reply.header('cache-control', 'no-store').send(manager.getState()));
   app.get('/api/lcu/status', async () => manager.getState().lcu);
+  app.get('/api/ingame', async (_request, reply) => reply.header('cache-control', 'no-store').send(ingame.get()));
   app.get('/api/post-match', async () => manager.getState().postMatch);
   app.get('/api/fonts', async () => {
     const root = path.resolve(existsSync('dist/client') ? 'dist/client/fonts/lens-grotesk' : 'public/fonts/lens-grotesk');
@@ -103,6 +110,12 @@ export async function createApp(options: { dataDir: string; logoDir?: string; po
     } finally { if (pending?.generation === generation) pending = undefined; }
   });
   app.get('/ws', { websocket: true }, socket => { clients.add(socket); socket.send(JSON.stringify({ type: 'state', state: manager.getState() })); socket.on('close', () => clients.delete(socket)); });
+  app.get('/ws/ingame', { websocket: true }, socket => {
+    socket.send(JSON.stringify(ingame.get()));
+    const unsubscribeIngame = ingame.subscribe(feed => { if (socket.readyState === 1) { if (socket.bufferedAmount > 1_000_000) socket.close(); else socket.send(JSON.stringify(feed)); } });
+    socket.on('close', unsubscribeIngame);
+    socket.on('error', unsubscribeIngame);
+  });
   const clientRoot = path.resolve('dist/client');
   if (existsSync(clientRoot)) {
     await app.register(fastifyStatic, { root: clientRoot });
@@ -112,6 +125,6 @@ export async function createApp(options: { dataDir: string; logoDir?: string; po
       return reply.code(404).send({ code: 'NOT_FOUND', message: 'Không tìm thấy.', fields: [] });
     });
   }
-  app.addHook('onClose', async () => { clearInterval(heartbeat); abortPending(); unsubscribe(); for (const client of clients) client.close(); });
+  app.addHook('onClose', async () => { ingame.stop(); clearInterval(heartbeat); abortPending(); unsubscribe(); for (const client of clients) client.close(); });
   return { app, manager };
 }

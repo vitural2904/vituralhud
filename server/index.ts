@@ -3,7 +3,7 @@ import { createApp } from './app';
 import { startLcuAdapter } from './lcu/adapter';
 import { acquireProcessLock } from './process-lock';
 const host = process.env.HOST ?? '127.0.0.1';
-if (!['127.0.0.1', 'localhost', '::1'].includes(host)) throw new Error('VirtualHUD chỉ chạy trên loopback.');
+if (!['127.0.0.1', 'localhost', '::1'].includes(host)) throw new Error('VituralHUD chỉ chạy trên loopback.');
 const port = Number(process.env.PORT ?? 4174);
 if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('PORT không hợp lệ.');
 const dataDir = process.env.DRAFT_DATA_DIR ?? path.resolve('data');

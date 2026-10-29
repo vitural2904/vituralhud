@@ -25,6 +25,15 @@ async function api(options: Partial<Parameters<typeof createApp>[0]> = {}) {
 const validRiot = { metadata: { matchId: 'VN2_123' }, info: { gameVersion: '16.16.1', gameDuration: 1000, participants: [{ teamId: 100, championId: 62 }, { teamId: 200, championName: 'annie' }], teams: [{ teamId: 100, win: true }, { teamId: 200, win: false }] } };
 
 describe('F01/F11 API validation and access', () => {
+  it('exposes the isolated game feed only to allowed local hosts without changing state', async () => {
+    const { app, headers, manager } = await api(); const before = manager.getState();
+    const response = await app.inject({ url: '/api/ingame', headers });
+    expect(response.statusCode).toBe(200);
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(response.json()).toMatchObject({ connected: expect.any(Boolean), players: expect.any(Array), events: expect.any(Array) });
+    expect((await app.inject({ url: '/api/ingame', headers: { host: 'evil.example:4187' } })).statusCode).toBe(403);
+    expect(manager.getState()).toEqual(before);
+  });
   it('reports the package release version accepted by START.cmd', async () => {
     const { app, headers } = await api();
     const response = await app.inject({ url: '/api/health', headers });

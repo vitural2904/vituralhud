@@ -1,0 +1,34 @@
+.ingame-control { min-height: 100vh; background: #101210; color: #ecece5; padding: 28px clamp(20px, 4vw, 64px) 48px; font-family: 'Be Vietnam Pro', sans-serif; }
+.ingame-control a { color: #9fd2e7; text-decoration: none; }
+.ingame-control a:hover { text-decoration: underline; }
+.ic-header { display: flex; justify-content: space-between; align-items: center; gap: 20px; max-width: 1600px; margin: 0 auto 26px; }
+.ic-header h1 { margin: 10px 0 0; font-size: 27px; }
+.ic-header a { font-size: 13px; }
+.ic-status { font-size: 13px; color: #d0a374; border: 1px solid #61492f; padding: 8px 12px; }
+.ic-status.is-online { color: #98dfb1; border-color: #3a6950; }
+.ic-layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 20px; max-width: 1600px; margin: auto; align-items: start; }
+.ic-main, .ic-side { display: grid; gap: 16px; min-width: 0; }
+.ic-section { background: #191c19; border: 1px solid #393e38; padding: 20px; min-width: 0; }
+.ic-section h2, .ic-section .sponsor-controls h2 { font-size: 16px; margin: 0 0 9px; color: #f1f1eb; }
+.ic-section p { color: #acb1a8; font-size: 13px; line-height: 1.5; margin: 0 0 14px; }
+.ic-section-head { display: flex; align-items: start; justify-content: space-between; gap: 12px; }
+.ic-segment { display: flex; border: 1px solid #50564e; flex-shrink: 0; }
+.ingame-control button, .ic-url a { color: #e9ece5; background: #292e29; border: 1px solid #555c53; padding: 8px 12px; font: inherit; font-size: 13px; cursor: pointer; }
+.ingame-control button:hover, .ic-url a:hover { background: #394139; }
+.ic-segment button { border: 0; }
+.ic-segment button[aria-pressed="true"] { background: #c7a36d; color: #131613; }
+.ic-preview { position: relative; width: 100%; aspect-ratio: 16 / 9; overflow: hidden; background: #29302d; border: 1px solid #454b43; }
+.ic-preview iframe { position: absolute; width: 1920px; height: 1080px; left: 0; top: 0; transform-origin: top left; border: 0; }
+.ic-note { margin: 12px 0 0 !important; }
+.ic-url { display: flex; gap: 8px; }
+.ic-url input { flex: 1; min-width: 0; color: #e9ece5; background: #0e110f; border: 1px solid #50564e; padding: 8px 10px; }
+.ic-url a { white-space: nowrap; }
+.ic-details { margin: 0; font-size: 13px; }
+.ic-details div { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #353a34; }
+.ic-details dt { color: #a8afa7; }.ic-details dd { margin: 0; }
+.ic-toggle { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; border-bottom: 1px solid #353a34; cursor: pointer; }
+.ic-toggle span { display: grid; gap: 4px; }.ic-toggle strong { font-size: 13px; }.ic-toggle small { color: #a8afa7; font-size: 11px; }
+.ic-toggle input { width: 19px; height: 19px; accent-color: #d0a46b; flex-shrink: 0; }
+.ic-error { color: #ff9a90 !important; margin-top: 12px !important; }
+.ingame-control .sponsor-controls { margin: 0; padding: 0; border: 0; background: transparent; }
+@media (max-width: 900px) { .ic-layout { grid-template-columns: 1fr; } .ic-header { align-items: start; flex-direction: column; } }

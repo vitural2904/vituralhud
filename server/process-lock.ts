@@ -14,7 +14,7 @@ export async function acquireProcessLock(directory: string, name = 'server.lock'
       if ((error as NodeJS.ErrnoException).code !== 'EEXIST' || attempt > 0) throw error;
       const existing = JSON.parse(await readFile(file, 'utf8')) as typeof owner;
       if (!Number.isSafeInteger(existing.pid) || existing.pid < 1) throw new Error('Lock lỗi. Kiểm tra tiến trình trước khi xóa lock.');
-      try { process.kill(existing.pid, 0); throw new Error('VirtualHUD đang chạy với thư mục dữ liệu này.'); }
+      try { process.kill(existing.pid, 0); throw new Error('VituralHUD đang chạy với thư mục dữ liệu này.'); }
       catch (probe) { if ((probe as NodeJS.ErrnoException).code !== 'ESRCH') throw probe; }
       await unlink(file);
     }

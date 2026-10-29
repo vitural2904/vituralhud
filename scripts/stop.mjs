@@ -40,5 +40,5 @@ export async function stopApp(directory, timeoutMs = 10000) {
 
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
   const root = path.resolve(import.meta.dirname, '..');
-  stopApp(path.resolve(root, process.env.DRAFT_DATA_DIR ?? 'data')).then(stopped => console.log(stopped ? 'VirtualHUD đã dừng. Không tự khởi động lại. Dữ liệu được giữ.' : 'Không thấy app đang chạy qua START.cmd.')).catch(error => { console.error(error.message); process.exitCode = 1; });
+  stopApp(path.resolve(root, process.env.DRAFT_DATA_DIR ?? 'data')).then(stopped => console.log(stopped ? 'VituralHUD đã dừng. Không tự khởi động lại. Dữ liệu được giữ.' : 'Không thấy app đang chạy qua START.cmd.')).catch(error => { console.error(error.message); process.exitCode = 1; });
 }

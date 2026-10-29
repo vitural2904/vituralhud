@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.4.0 - 2026-10-30
+
+- Thêm overlay spectator trong trận, killfeed và phép bổ trợ; giữ thanh điểm và minimap của game.
+- Thêm điều khiển HUD, logo nhà tài trợ và icon trang bị nội bộ.
+- Đồng bộ logo đội từ thông tin ban/pick; cập nhật font và bố cục bảng chỉ số.
+- Cập nhật Fastify, Vite, Vitest và fast-uri để xử lý cảnh báo bảo mật.
+- Giới hạn: CS có thể không chính xác; trạng thái chiêu cuối và cua chưa có nguồn đã xác nhận. Cần kiểm tra League và OBS thực tế trước khi phát hành.
+
 ## 1.3.0 - 2026-10-17
 
 - Audit draft state transitions: decoded artwork crossfades, gentle lock settling, animated turn/team labels, skipped-ban markers, smooth timer closure and persistent unified-output handoff. Respect reduced motion and ignore stale image loads.

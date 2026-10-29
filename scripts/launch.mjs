@@ -52,7 +52,7 @@ async function launch() {
       await new Promise(resolve => setTimeout(resolve, 300));
     }
   }
-  console.log('VirtualHUD đã mở. Sóng đang tắt khi khởi động mới.');
+  console.log('VituralHUD đã mở. Sóng đang tắt khi khởi động mới.');
   if (process.env.VIRTUALHUD_NO_BROWSER !== '1' && process.platform === 'win32') spawn('cmd.exe', ['/d', '/s', '/c', 'start "" "http://127.0.0.1:4174/control"'], { windowsHide: true, stdio: 'ignore' }).unref();
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) launch().catch(error => { console.error(error.message); process.exitCode = 1; });

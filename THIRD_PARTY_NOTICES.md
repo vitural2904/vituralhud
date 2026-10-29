@@ -1,6 +1,6 @@
 # Third-party notices
 
-The MIT License covers VirtualHUD source code.
+The MIT License covers VituralHUD source code.
 
 It does not replace third-party licenses or rights.
 
@@ -17,6 +17,9 @@ Anybody is distributed under the SIL Open Font License 1.1.
 
 See `public/fonts/anybody/OFL.txt`.
 
+Barlow Condensed is distributed under the SIL Open Font License 1.1.
+See `public/fonts/barlow-condensed/OFL.txt`.
+
 Be Vietnam Pro is distributed under the SIL Open Font License 1.1.
 
 See `public/fonts/be-vietnam-pro/OFL.txt`.
@@ -25,12 +28,13 @@ See `public/fonts/be-vietnam-pro/OFL.txt`.
 
 Champion images and game role icons belong to their respective owners.
 
-Post-match objective icons are Riot Games assets distributed through the
-CommunityDragon mirror. See `public/objectives/README.md`.
+Post-match objective icons and in-game dragon portraits are Riot Games assets
+distributed through the CommunityDragon mirror. See `public/objectives/README.md`
+and `public/ingame-objectives/README.md`.
 
 They are included for this League of Legends broadcast tool.
 
-VirtualHUD is not endorsed by Riot Games.
+VituralHUD is not endorsed by Riot Games.
 
 League of Legends and Riot Games are trademarks of Riot Games, Inc.
 

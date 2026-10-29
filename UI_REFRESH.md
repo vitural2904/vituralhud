@@ -1,4 +1,4 @@
-# VirtualHUD UI refresh
+# VituralHUD UI refresh
 
 ## Component map
 

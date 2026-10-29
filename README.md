@@ -80,6 +80,8 @@ npm start
 - `/overlay/post-match`: chỉ hiện khi post-match đang live.
 - `/preview/draft`: preview ban/pick. Luôn hiện.
 - `/preview/post-match`: preview post-match. Luôn hiện.
+- `/overlay/ingame`: HUD trong trận. Tự ẩn khi không nhận được dữ liệu game.
+- `/preview/ingame`: xem HUD với dữ liệu mẫu. Không dùng để phát trận thật.
 
 ## OBS
 
@@ -101,6 +103,18 @@ Dùng Width `1920`. Height `1080`. Không thêm nền.
 
 Server mất kết nối quá 5 giây: output tự ẩn. Preview vẫn hiện.
 
+## HUD ingame
+
+Thêm Browser Source 1920 × 1080 tại `http://127.0.0.1:4174/overlay/ingame`. Lớp này trong suốt. Đặt trên nguồn game trong OBS. HUD để trống khu vực minimap và gameplay.
+
+Thanh trên chỉ hiển thị tên và logo hai đội ở hai bên. Bật Score Display của spectator để xem tỉ số, vàng, trụ và đồng hồ gốc ở giữa. Vị trí ô đội được căn theo ảnh spectator 1920 × 1080; cần kiểm tra với độ phân giải và tỉ lệ HUD thực tế.
+
+Mở trận custom ở chế độ khán giả trên cùng máy. App đọc Game Client API cổng 2999. Dashboard ban/pick có mục tải nhiều logo tài trợ và đặt thời gian đổi logo.
+
+Vàng đội, trụ và chênh lệch vàng chưa có nguồn xác thực: hiện `—`. CS có dấu `≈` vì game có thể làm tròn khi spectate. Không có bộ đếm mục tiêu hoặc đồng hồ quái khi chưa xác minh được dữ liệu. Thứ tự người chơi lấy từ API; các dòng đối diện chưa chắc cùng đường. Ảnh trang bị dùng Data Dragon và cần Internet. HUD chưa được kiểm chứng trong trận spectator thật.
+
+Bảng dưới hiển thị phép bổ trợ từ dữ liệu spectator, với icon lưu trên máy. API trong bản ghi chưa có thời gian hồi phép hay trạng thái chiêu cuối; `R —` nghĩa là chưa có dữ liệu.
+
 ## Ban/pick
 
 HUD gọn kiểu broadcast: tên tuyển thủ xoay dọc, role nhỏ cạnh tên, logo và mã đội nằm giữa.
@@ -108,7 +122,7 @@ Thanh mảnh phía trên co đều từ hai đầu vào tâm. Không hiện số
 Thanh chạy mượt giữa các nhịp LCU. Pause dừng ngay. Lượt mới làm đầy lại thanh.
 Dashboard vẫn có số giây để operator điều khiển. Đặc tả và kiểm tra: `docs/design/champ-select-hud.md`.
 
-Mở League Client trước. Chạy VirtualHUD. Vào ChampSelect.
+Mở League Client trước. Chạy VituralHUD. Vào ChampSelect.
 
 App tự đọc LCU. Bấm `TRẢ QUYỀN CHO LCU` để bật phát tự động.
 Draft hoàn tất: giữ đội hình cuối 15 giây rồi tự ẩn. Poll lặp không kéo dài thời gian.
@@ -271,4 +285,4 @@ Source code dùng MIT License.
 
 Asset bên thứ ba có quyền riêng. Đọc `THIRD_PARTY_NOTICES.md`.
 
-VirtualHUD không thuộc Riot Games.
+VituralHUD không thuộc Riot Games.

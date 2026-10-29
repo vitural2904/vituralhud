@@ -418,3 +418,6 @@ html:not([data-lens]) .workspace-heading p, html:not([data-lens]) .field input {
   .post-status-strip .match-id-field { grid-column: 1 / -1; }
   .post-publish-bar { position: static; }
 }
+.ingame-navigation { display: flex; justify-content: flex-end; padding: 8px 28px; background: #191c1e; border-bottom: 1px solid #353b3d; }
+.ingame-navigation a { display: inline-block; padding: 7px 13px; border: 1px solid #5c9cb6; color: #b7e5f2; font-weight: 700; text-decoration: none; }
+.ingame-navigation a:hover, .ingame-navigation a:focus-visible { background: #254651; color: white; }

@@ -6,9 +6,16 @@ test-results/
 playwright-report/
 .npm-cache/
 .codex-local/
+.playwright-cli/
+.test-tmp/
 audit/
 output/
 .env
+.env.*
+!.env.example
+*.zip
+*.jsonl
+public/fonts/barlow-condensed/BarlowCondensed-BlackItalic.ttf
 *.log
 *.part
 .DS_Store

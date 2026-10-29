@@ -1,0 +1,8 @@
+.ig-event-feed { position: absolute; top: 13%; right: 1%; width: 18%; display: flex; flex-direction: column; align-items: flex-end; gap: .3vw; }
+.ig-event { width: 100%; height: 4vw; display: flex; align-items: center; justify-content: flex-end; gap: .5vw; padding: .3vw .55vw .3vw 2vw; border-right: .18vw solid #88918f; background: linear-gradient(90deg, transparent, rgba(35,40,39,.82) 42%, rgba(65,68,67,.95)); }
+.ig-event--blue { border-color: #3998d4; background: linear-gradient(90deg, transparent, rgba(15,51,72,.82) 42%, rgba(26,107,151,.95)); }
+.ig-event--red { border-color: #ee5050; background: linear-gradient(90deg, transparent, rgba(80,30,34,.82) 42%, rgba(158,47,52,.95)); }
+.ig-event-portrait { width: 3.2vw; height: 3.2vw; display: grid; place-items: center; flex: 0 0 3.2vw; background: #141819; border: 2px solid #080b0c; color: white; font-weight: 800; font-size: 1.3vw; }
+.ig-event-portrait img { width: 100%; height: 100%; object-fit: cover; }
+.ig-event-target svg { width: 70%; height: 70%; color: #eee5ce; }
+.ig-event-sword { width: 1.6vw; height: 1.6vw; color: #e5d9bd; }
