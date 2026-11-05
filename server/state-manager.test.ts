@@ -13,6 +13,19 @@ afterEach(async () => {
 });
 
 describe("StateManager revision", () => {
+  it('shows a new waiting champ select after a completed game and hides it in the lobby', async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), 'virtualhud-series-')); tempDirs.push(dir);
+    const manager = new StateManager(dir); await manager.init();
+    await manager.dispatch({ type: 'RESUME_AUTO_OUTPUT' });
+    const team = () => ({ picks: Array.from({ length: 5 }, () => ({ championId: null, locked: false })), bans: Array(5).fill(null) });
+    const snapshot: DraftFeedSnapshot = { feedId: '0', phase: 'waiting', observedAt: new Date().toISOString(), timerMs: 0, timerRunning: false, teams: { blue: team(), red: team() } };
+    expect((await manager.ingestDraftFeed(snapshot)).activeOutput).toBe('draft');
+    await manager.ingestDraftFeed({ ...snapshot, phase: 'complete' });
+    expect((await manager.setLcuStatus({ connected: true, message: 'Lobby', feed: 'idle', gameflowPhase: 'Lobby', sessionId: null })).activeOutput).toBe('none');
+    expect((await manager.ingestDraftFeed(snapshot)).activeOutput).toBe('draft');
+    await manager.dispatch({ type: 'SET_OUTPUT', output: 'none' });
+    expect((await manager.ingestDraftFeed(snapshot)).activeOutput).toBe('none');
+  });
   it('re-arms the final hold when a reused custom-game ID reconnects in pick-2', async () => {
     const dir = await mkdtemp(path.join(os.tmpdir(), 'virtualhud-reused-session-')); tempDirs.push(dir);
     let now = 0;

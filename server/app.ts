@@ -8,7 +8,7 @@ import websocket from '@fastify/websocket';
 import sharp from 'sharp';
 import { DomainError, validateCommand } from '../src/domain/validation';
 import { StateManager } from './state-manager';
-import { MAX_TEAM_LOGO_BYTES, buildTeamLogoFilename, detectTeamLogoFormat } from './team-logo-assets';
+import { LOGO_UPLOAD_BODY_LIMIT, buildTeamLogoFilename, detectTeamLogoFormat } from './team-logo-assets';
 import { fetchMatchV5 } from './post-match/match-v5';
 import { registerSponsorRoutes } from './sponsors';
 import packageInfo from '../package.json';
@@ -38,7 +38,8 @@ export async function createApp(options: { dataDir: string; logoDir?: string; po
     const known = error instanceof DomainError;
     const statusCode = error instanceof Error && 'statusCode' in error && typeof error.statusCode === 'number' ? error.statusCode : 500;
     const status = known ? error.statusCode : statusCode < 500 ? statusCode : 500;
-    return reply.code(status).send({ code: known ? error.code : 'REQUEST_FAILED', message: known ? error.message : status < 500 ? 'Yêu cầu không hợp lệ.' : 'Không thể xử lý yêu cầu.', fields: known ? error.fields : [] });
+    const message = known ? error.message : status === 415 ? 'Chỉ nhận ảnh PNG, JPG hoặc WebP tĩnh hợp lệ.' : status < 500 ? 'Yêu cầu không hợp lệ.' : 'Không thể xử lý yêu cầu.';
+    return reply.code(status).send({ code: known ? error.code : 'REQUEST_FAILED', message, fields: known ? error.fields : [] });
   });
   await app.register(websocket, { preClose: async () => {
     for (const client of app.websocketServer.clients) client.terminate();
@@ -46,7 +47,7 @@ export async function createApp(options: { dataDir: string; logoDir?: string; po
     await new Promise<void>(resolve => app.websocketServer.close(() => resolve()));
   } });
   await app.register(fastifyStatic, { root: logoRoot, prefix: '/team-uploads/', decorateReply: false });
-  app.addContentTypeParser(/^image\/(?:png|jpeg|webp)$/i, { parseAs: 'buffer', bodyLimit: MAX_TEAM_LOGO_BYTES }, (_request, body, done) => done(null, body));
+  app.addContentTypeParser(/^image\/(?:png|jpeg|webp)$/i, { parseAs: 'buffer', bodyLimit: LOGO_UPLOAD_BODY_LIMIT }, (_request, body, done) => done(null, body));
   await registerSponsorRoutes(app, options.dataDir);
   await registerIngameSettings(app, options.dataDir);
   const clients = new Set<{ send: (data: string) => void; readyState: number; close: () => void }>();
@@ -69,14 +70,14 @@ export async function createApp(options: { dataDir: string; logoDir?: string; po
     const list = async (root: string, prefix: string, source: 'uploaded' | 'built-in') => (await readdir(root)).filter(name => /^[\w .%-]+\.(png|jpe?g|webp)$/i.test(name)).map(name => ({ name, url: `${prefix}/${encodeURIComponent(name)}`, source }));
     return { assets: [...await list(logoRoot, '/team-uploads', 'uploaded'), ...(existsSync(builtIn) ? await list(builtIn, '/teams', 'built-in') : [])] };
   });
-  app.post('/api/team-logos', { bodyLimit: MAX_TEAM_LOGO_BYTES }, async request => {
+  app.post('/api/team-logos', { bodyLimit: LOGO_UPLOAD_BODY_LIMIT }, async request => {
     if (!Buffer.isBuffer(request.body) || !detectTeamLogoFormat(request.body)) throw new DomainError('INVALID_IMAGE', 'Chỉ nhận PNG, JPG hoặc WebP hợp lệ.', [], 415);
     let png: Buffer;
     try {
-      const image = sharp(request.body, { limitInputPixels: 16000000, failOn: 'warning' }); const metadata = await image.metadata();
+      const image = sharp(request.body, { limitInputPixels: false, failOn: 'warning' }); const metadata = await image.metadata();
       if (!metadata.width || !metadata.height || (metadata.pages ?? 1) > 1) throw new Error('invalid image');
-      png = await image.png().toBuffer(); if (png.length > MAX_TEAM_LOGO_BYTES) throw new Error('image too large');
-    } catch { throw new DomainError('INVALID_IMAGE', 'Ảnh lỗi, ảnh động hoặc vượt giới hạn.', [], 415); }
+      png = await image.png().toBuffer();
+    } catch { throw new DomainError('INVALID_IMAGE', 'Ảnh lỗi hoặc ảnh động. Chọn ảnh PNG, JPG hoặc WebP tĩnh hợp lệ.', [], 415); }
     let name = 'team-logo'; try { name = decodeURIComponent(String(request.headers['x-file-name'] ?? name)); } catch { /* safe default */ }
     const fileName = buildTeamLogoFilename(name, 'png', crypto.randomUUID().slice(0, 8)); await writeFile(path.join(logoRoot, fileName), png, { flag: 'wx' });
     return { asset: { name: fileName, url: `/team-uploads/${fileName}`, source: 'uploaded' } };

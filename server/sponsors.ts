@@ -5,7 +5,7 @@ import type { FastifyInstance } from 'fastify';
 import fastifyStatic from '@fastify/static';
 import sharp from 'sharp';
 import { DomainError } from '../src/domain/validation';
-import { MAX_TEAM_LOGO_BYTES, buildTeamLogoFilename, detectTeamLogoFormat } from './team-logo-assets';
+import { LOGO_UPLOAD_BODY_LIMIT, buildTeamLogoFilename, detectTeamLogoFormat } from './team-logo-assets';
 
 export type SponsorSettings = { logos: string[]; intervalSeconds: number };
 const empty: SponsorSettings = { logos: [], intervalSeconds: 10 };
@@ -25,16 +25,15 @@ export async function registerSponsorRoutes(app: FastifyInstance, dataDir: strin
   try { const saved: unknown = JSON.parse(await readFile(file, 'utf8')); if (validSponsorSettings(saved)) settings = saved; } catch { /* No valid saved settings yet. */ }
   let writes = Promise.resolve();
   app.get('/api/sponsors', async (_request, reply) => reply.header('cache-control', 'no-store').send(settings));
-  app.post('/api/sponsor-logos', { bodyLimit: MAX_TEAM_LOGO_BYTES }, async request => {
+  app.post('/api/sponsor-logos', { bodyLimit: LOGO_UPLOAD_BODY_LIMIT }, async request => {
     if (!Buffer.isBuffer(request.body) || !detectTeamLogoFormat(request.body)) throw new DomainError('INVALID_IMAGE', 'Chỉ nhận PNG, JPG hoặc WebP hợp lệ.', [], 415);
     let png: Buffer;
     try {
-      const image = sharp(request.body, { limitInputPixels: 16000000, failOn: 'warning' });
+      const image = sharp(request.body, { limitInputPixels: false, failOn: 'warning' });
       const metadata = await image.metadata();
       if (!metadata.width || !metadata.height || (metadata.pages ?? 1) > 1) throw new Error('invalid image');
       png = await image.png().toBuffer();
-      if (png.length > MAX_TEAM_LOGO_BYTES) throw new Error('image too large');
-    } catch { throw new DomainError('INVALID_IMAGE', 'Ảnh lỗi, ảnh động hoặc vượt giới hạn.', [], 415); }
+    } catch { throw new DomainError('INVALID_IMAGE', 'Ảnh lỗi hoặc ảnh động. Chọn ảnh PNG, JPG hoặc WebP tĩnh hợp lệ.', [], 415); }
     let name = 'sponsor-logo';
     try { name = decodeURIComponent(String(request.headers['x-file-name'] ?? name)); } catch { /* safe default */ }
     const fileName = buildTeamLogoFilename(name, 'png', randomUUID().slice(0, 8));

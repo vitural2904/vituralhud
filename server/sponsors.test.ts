@@ -6,10 +6,28 @@ import sharp from 'sharp';
 import { afterEach, describe, expect, it } from 'vitest';
 import { registerSponsorRoutes } from './sponsors';
 import { createApp } from './app';
+import { randomBytes } from 'node:crypto';
 
 describe('sponsor settings', () => {
   const dirs: string[] = [];
   afterEach(async () => { await Promise.all(dirs.splice(0).map(dir => rm(dir, { recursive: true, force: true }))); });
+  it('accepts valid images larger than 10 MiB for teams and sponsors and explains invalid images', async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), 'large-logo-')); dirs.push(dir);
+    const { app } = await createApp({ dataDir: dir, port: 4187 });
+    try {
+      const headers = { host: '127.0.0.1:4187' };
+      const token = (await app.inject({ url: '/api/control-session', headers })).json().token;
+      const image = await sharp(randomBytes(2000 * 2000 * 3), { raw: { width: 2000, height: 2000, channels: 3 } }).png().toBuffer();
+      expect(image.length).toBeGreaterThan(10 * 1024 * 1024);
+      for (const url of ['/api/team-logos', '/api/sponsor-logos']) {
+        const uploadHeaders = { ...headers, 'x-virtualhud-control': token, 'content-type': 'image/png' };
+        expect((await app.inject({ method: 'POST', url, headers: uploadHeaders, payload: image })).statusCode).toBe(200);
+        const invalid = await app.inject({ method: 'POST', url, headers: uploadHeaders, payload: Buffer.from('bad image') });
+        expect(invalid.statusCode).toBe(415);
+        expect(invalid.json().message).toMatch(/PNG, JPG hoặc WebP/);
+      }
+    } finally { await app.close(); }
+  }, 30000);
   it('persists valid settings and rejects unsafe URLs and invalid intervals', async () => {
     const dir = await mkdtemp(path.join(os.tmpdir(), 'sponsor-test-')); dirs.push(dir);
     const app = Fastify(); await registerSponsorRoutes(app, dir);

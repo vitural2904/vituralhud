@@ -1,6 +1,7 @@
 import path from "node:path";
 
-export const MAX_TEAM_LOGO_BYTES = 5 * 1024 * 1024;
+// Fastify requires a finite body limit; do not impose an application upload cap.
+export const LOGO_UPLOAD_BODY_LIMIT = Number.MAX_SAFE_INTEGER;
 export type TeamLogoFormat = { extension: "png" | "jpg" | "webp"; mime: "image/png" | "image/jpeg" | "image/webp" };
 
 export function detectTeamLogoFormat(data: Buffer): TeamLogoFormat | null {

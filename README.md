@@ -87,6 +87,8 @@ npm start
 
 Tạo Browser Source.
 
+Nếu OBS mở Browser Source khi ứng dụng chưa chạy, trang lỗi của OBS không có mã ứng dụng để tự kết nối lại. Hãy khởi chạy ứng dụng trước, hoặc bật tùy chọn làm mới Browser Source khi chuyển cảnh trong OBS rồi chuyển lại cảnh. Khi trang overlay đã tải thành công, nó tự kết nối lại nếu server khởi động lại.
+
 Output chung. Dùng cho cả ban/pick và post-match:
 
 ```text
@@ -178,7 +180,7 @@ Match Leaders không cần Match Timeline.
 
 Chọn hoặc upload PNG, JPG, WebP ngay trong dashboard.
 
-Giới hạn mỗi file là 5 MB và 16 triệu pixel. Chỉ nhận ảnh giải mã được.
+Ứng dụng không đặt giới hạn dung lượng hoặc số pixel khi upload logo đội và nhà tài trợ; ảnh lớn vẫn phụ thuộc bộ nhớ khả dụng. Chỉ nhận ảnh PNG, JPG hoặc WebP tĩnh giải mã được.
 Ảnh được chuyển thành PNG tĩnh. File nằm trong `data/team-logos`.
 Thư mục này không commit.
 

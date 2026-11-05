@@ -33,16 +33,16 @@ export function EventFeed({ feed, preview = false }: { feed: Feed; preview?: boo
     cursor.current = result.cursor;
     if (result.reset) { for (const timer of timers.current) clearTimeout(timer); timers.current.clear(); setQueue([]); }
     else if (result.notices.length) {
-      setQueue(old => [...old, ...result.notices].slice(-5));
+      setQueue(old => [...old, ...result.notices]);
       for (const notice of result.notices) {
-        const timer = window.setTimeout(() => { timers.current.delete(timer); setQueue(old => old.filter(item => item.id !== notice.id)); }, 1800);
+        const timer = window.setTimeout(() => { timers.current.delete(timer); setQueue(old => old.filter(item => item.id !== notice.id)); }, 2000);
         timers.current.add(timer);
       }
     }
   }, [feed, preview]);
   useEffect(() => () => { for (const timer of timers.current) clearTimeout(timer); timers.current.clear(); }, []);
   return <aside className="ig-event-feed" aria-label="Sự kiện trận đấu" aria-live="polite"><AnimatePresence initial={false}>
-    {queue.slice(0, 5).map(notice => {
+    {queue.map(notice => {
       const killer = resolve(notice.killer, feed.players); const victim = resolve(notice.victim, feed.players);
       const killerIcon = portrait(killer); const targetIcon = notice.kind === 'kill' ? portrait(victim) : iconFor(notice);
       const label = `${notice.killer || 'Không rõ'} → ${notice.victim || notice.dragon || notice.kind}`;

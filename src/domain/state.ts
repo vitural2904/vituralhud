@@ -66,7 +66,7 @@ const addOverride = (state: BroadcastState, field: string) => {
 export function reconcileOutput(state: BroadcastState) {
   if (state.outputOwner === 'lcu') {
     const liveDraft = state.lcu.connected && state.lcu.feed === 'champ-select'
-      && Boolean(state.lcu.sessionId && state.lcu.lastPayloadAt) && !['waiting', 'complete'].includes(state.draft.phase);
+      && Boolean(state.lcu.sessionId && state.lcu.lastPayloadAt) && state.draft.phase !== 'complete';
     state.activeOutput = state.draft.autoSync && !state.draft.manualOverride
       && (liveDraft || (state.draft.finalizationMs ?? 0) > 0) ? 'draft' : 'none';
   }

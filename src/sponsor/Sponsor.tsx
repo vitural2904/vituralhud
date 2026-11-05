@@ -50,10 +50,11 @@ export function SponsorControls() {
       if (settings.logos.length + files.length > 20) throw new Error('Tối đa 20 logo.');
       const logos = [...settings.logos];
       for (const file of Array.from(files)) {
-        if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024) throw new Error('Chỉ nhận PNG, JPG, WebP dưới 5 MB.');
+        if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) throw new Error('Chỉ nhận PNG, JPG hoặc WebP.');
         const response = await controlRequest('/api/sponsor-logos', { headers: { 'content-type': file.type, 'x-file-name': encodeURIComponent(file.name) }, body: file });
-        if (!response.ok) throw new Error('Không thể tải logo.');
-        const payload = await response.json() as { asset: { url: string } }; logos.push(payload.asset.url);
+        const payload = await response.json() as { asset?: { url: string }; message?: string };
+        if (!response.ok || !payload.asset) throw new Error(payload.message ?? 'Không thể tải logo.');
+        logos.push(payload.asset.url);
       }
       await save({ ...settings, logos });
     } catch (caught) { setError(caught instanceof Error ? caught.message : 'Có lỗi xảy ra.'); }
@@ -64,5 +65,5 @@ export function SponsorControls() {
     if (!Number.isInteger(n) || n < 2 || n > 300) { setIntervalValue(String(settings.intervalSeconds)); setError('Thời gian phải từ 2 đến 300 giây.'); return; }
     setError(''); void save({ ...settings, intervalSeconds: n }).catch(() => setError('Không thể lưu thời gian.'));
   };
-  return <section className="sponsor-controls"><h2>Nhà tài trợ</h2><div className="sponsor-controls__row"><button type="button" disabled={busy} onClick={() => input.current?.click()}>Tải logo</button><input ref={input} type="file" accept="image/png,image/jpeg,image/webp" multiple hidden onChange={event => void upload(event.target.files)} /><label>Đổi logo mỗi <input type="number" min="2" max="300" value={interval} disabled={busy} onChange={event => setIntervalValue(event.target.value)} onBlur={commitInterval} onKeyDown={event => { if (event.key === 'Enter') event.currentTarget.blur(); }} /> giây</label></div><div className="sponsor-controls__list">{settings.logos.map((logo, index) => <div key={logo}><img src={logo} alt={`Logo ${index + 1}`} /><button type="button" disabled={busy} aria-label={`Bỏ logo ${index + 1}`} onClick={() => void save({ ...settings, logos: settings.logos.filter(item => item !== logo) }).catch(() => setError('Không thể bỏ logo.'))}>×</button></div>)}</div>{error && <p role="alert">{error}</p>}</section>;
+  return <section className="sponsor-controls"><h2>Nhà tài trợ</h2><div className="sponsor-controls__row"><button type="button" disabled={busy} onClick={() => input.current?.click()}>Tải logo</button><input ref={input} type="file" accept="image/png,image/jpeg,image/webp" multiple hidden onChange={event => void upload(event.target.files)} /><label>Đổi logo mỗi <input type="number" min="2" max="300" value={interval} disabled={busy} onChange={event => setIntervalValue(event.target.value)} onBlur={commitInterval} onKeyDown={event => { if (event.key === 'Enter') event.currentTarget.blur(); }} /> giây</label></div><p>PNG, JPG hoặc WebP tĩnh · không giới hạn dung lượng.</p><div className="sponsor-controls__list">{settings.logos.map((logo, index) => <div key={logo}><img src={logo} alt={`Logo ${index + 1}`} /><button type="button" disabled={busy} aria-label={`Bỏ logo ${index + 1}`} onClick={() => void save({ ...settings, logos: settings.logos.filter(item => item !== logo) }).catch(() => setError('Không thể bỏ logo.'))}>×</button></div>)}</div>{error && <p role="alert">{error}</p>}</section>;
 }

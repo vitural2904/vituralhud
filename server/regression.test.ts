@@ -170,7 +170,7 @@ describe('F04/F05/F06/F07/F10/F18 review and output', () => {
       expect(state.getState().activeOutput).toBe('none');
     }
     await state.ingestDraftFeed({ feedId: 'next', observedAt: new Date().toISOString(), phase: 'waiting', timerMs: 0, timerRunning: false, teams: { blue: { picks, bans: Array(5).fill(null) }, red: { picks, bans: Array(5).fill(null) } } });
-    expect(state.getState().activeOutput).toBe('none');
+    expect(state.getState().activeOutput).toBe('draft');
   });
 });
 
